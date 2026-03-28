@@ -1,19 +1,8 @@
 package org.example;
 
-import com.sun.jna.Callback;
-import com.sun.jna.Function;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
-import com.sun.jna.WString;
+import com.sun.jna.*;
 import com.sun.jna.platform.win32.COM.COMUtils;
-import com.sun.jna.platform.win32.Guid;
-import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.Ole32;
-import com.sun.jna.platform.win32.WinDef;
-import com.sun.jna.platform.win32.WinError;
-import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.platform.win32.WinUser;
+import com.sun.jna.platform.win32.*;
 import com.sun.jna.ptr.ByReference;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;

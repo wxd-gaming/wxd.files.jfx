@@ -17,19 +17,24 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        MainPanel mainPanel = new MainPanel(resolveSplitCount(getParameters().getRaw()));
+        MainPanel mainPanel = new MainPanel(resolveRequestedSplitCount(getParameters().getRaw()));
         Scene scene = new Scene(mainPanel, 1280, 820);
-        stage.setTitle("JFX Folder Manager");
+        stage.setTitle("無心道 分屏 文件管理器");
         stage.setScene(scene);
         stage.show();
     }
 
-    static int resolveSplitCount(List<String> args) {
+    static Integer resolveRequestedSplitCount(List<String> args) {
         if (args.isEmpty()) {
-            return 2;
+            return null;
         }
         String value = args.getFirst();
-        return "4".equals(value) ? 4 : 2;
+        return switch (value) {
+            case "2" -> 2;
+            case "4" -> 4;
+            case "6" -> 6;
+            default -> null;
+        };
     }
 
     static void showError(String header, String content) {
