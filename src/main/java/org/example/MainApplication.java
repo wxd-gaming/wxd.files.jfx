@@ -39,7 +39,7 @@ public class MainApplication extends Application {
 
     static void showError(String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Folder Manager");
+        alert.setTitle("無心道 Folder Manager");
         alert.setHeaderText(header);
         alert.setContentText(content);
         alert.showAndWait();
@@ -47,7 +47,7 @@ public class MainApplication extends Application {
 
     static void showInfo(String header, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Folder Manager");
+        alert.setTitle("無心道 Folder Manager");
         alert.setHeaderText(header);
         alert.setContentText(content);
         alert.showAndWait();

@@ -8,6 +8,8 @@ import java.util.prefs.Preferences;
 
 final class AppStateStore {
 
+    static final int MAX_SPLIT_COUNT = 10;
+
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(AppStateStore.class);
     private static final String KEY_SPLIT_COUNT = "wxd.files.jfx.ui.split.count";
     private static final String KEY_LAYOUT_MODE = "wxd.files.jfx.ui.layout.mode";
@@ -17,7 +19,7 @@ final class AppStateStore {
     }
 
     static int loadSplitCount() {
-        int count = PREFERENCES.getInt(KEY_SPLIT_COUNT, 2);
+        int count = PREFERENCES.getInt(KEY_SPLIT_COUNT, 4);
         return normalizeSplitCount(count);
     }
 
@@ -63,15 +65,15 @@ final class AppStateStore {
     }
 
     static void clearPanePathFrom(int startIndex) {
-        for (int index = Math.max(startIndex, 0); index < 6; index++) {
+        for (int index = Math.max(startIndex, 0); index < MAX_SPLIT_COUNT; index++) {
             PREFERENCES.remove(KEY_PATH_PREFIX + index);
         }
     }
 
     private static int normalizeSplitCount(int splitCount) {
-        if (splitCount == 4 || splitCount == 6) {
+        if (splitCount >= 1 && splitCount <= MAX_SPLIT_COUNT) {
             return splitCount;
         }
-        return 2;
+        return 4;
     }
 }

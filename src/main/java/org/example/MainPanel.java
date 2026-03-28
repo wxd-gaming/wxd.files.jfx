@@ -44,7 +44,7 @@ final class MainPanel extends BorderPane {
         panePaths.addAll(AppStateStore.loadPanePaths(splitCount));
         AppStateStore.saveSplitCount(splitCount);
         AppStateStore.saveLayoutMode(layoutMode.name());
-        setPadding(new Insets(12));
+        setPadding(new Insets(4));
         setStyle("-fx-background-color: linear-gradient(to bottom, #f4f7fb, #dde6f2);");
         setTop(createToolbar());
         setCenter(contentGrid);
@@ -53,7 +53,7 @@ final class MainPanel extends BorderPane {
     }
 
     private Node createToolbar() {
-        Label title = new Label("Folder Manager");
+        Label title = new Label("無心道  Folder Manager");
         title.setFont(Font.font(20));
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: #203040;");
 
@@ -61,7 +61,7 @@ final class MainPanel extends BorderPane {
         
         HBox splitButtons = new HBox(2);
         splitButtons.setAlignment(Pos.CENTER_LEFT);
-        for (int i = 1; i <= 10; i++) {
+        for (int i = 1; i <= AppStateStore.MAX_SPLIT_COUNT; i++) {
             RadioButton splitRadio = new RadioButton(i + " 屏");
             splitRadio.setToggleGroup(group);
             splitRadio.setSelected(splitCount == i);
@@ -205,7 +205,7 @@ final class MainPanel extends BorderPane {
     }
 
     private static int normalizeSplitCount(int splitCount) {
-        if (splitCount >= 1 && splitCount <= 10) {
+        if (splitCount >= 1 && splitCount <= AppStateStore.MAX_SPLIT_COUNT) {
             return splitCount;
         }
         return 2;
