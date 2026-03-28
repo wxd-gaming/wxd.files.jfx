@@ -48,7 +48,7 @@ final class MainPanel extends BorderPane {
         setStyle("-fx-background-color: linear-gradient(to bottom, #f4f7fb, #dde6f2);");
         setTop(createToolbar());
         setCenter(contentGrid);
-        BorderPane.setMargin(contentGrid, new Insets(12, 0, 0, 0));
+        BorderPane.setMargin(contentGrid, new Insets(8, 0, 0, 0));
         rebuildPanels();
     }
 
@@ -58,21 +58,17 @@ final class MainPanel extends BorderPane {
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: #203040;");
 
         ToggleGroup group = new ToggleGroup();
-        RadioButton twoSplit = new RadioButton("2 屏");
-        twoSplit.setToggleGroup(group);
-        twoSplit.setSelected(splitCount == 2);
-
-        RadioButton fourSplit = new RadioButton("4 屏");
-        fourSplit.setToggleGroup(group);
-        fourSplit.setSelected(splitCount == 4);
-
-        RadioButton sixSplit = new RadioButton("6 屏");
-        sixSplit.setToggleGroup(group);
-        sixSplit.setSelected(splitCount == 6);
-
-        twoSplit.setOnAction(event -> switchSplitCount(2));
-        fourSplit.setOnAction(event -> switchSplitCount(4));
-        sixSplit.setOnAction(event -> switchSplitCount(6));
+        
+        HBox splitButtons = new HBox(2);
+        splitButtons.setAlignment(Pos.CENTER_LEFT);
+        for (int i = 1; i <= 10; i++) {
+            RadioButton splitRadio = new RadioButton(i + " 屏");
+            splitRadio.setToggleGroup(group);
+            splitRadio.setSelected(splitCount == i);
+            final int count = i;
+            splitRadio.setOnAction(event -> switchSplitCount(count));
+            splitButtons.getChildren().add(splitRadio);
+        }
 
         ToggleGroup layoutGroup = new ToggleGroup();
         RadioButton horizontal = new RadioButton("横向");
@@ -94,14 +90,17 @@ final class MainPanel extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox toolbar = new HBox(10, title, spacer, twoSplit, fourSplit, sixSplit, horizontal, vertical, mixed);
+        Region buttonSeparator = new Region();
+        buttonSeparator.setPrefWidth(16);
+
+        HBox toolbar = new HBox(4, title, spacer, splitButtons, buttonSeparator, horizontal, vertical, mixed);
         toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setPadding(new Insets(10, 14, 10, 14));
+        toolbar.setPadding(new Insets(4, 20, 4, 4));
         toolbar.setStyle("""
                 -fx-background-color: rgba(255,255,255,0.92);
                 -fx-background-radius: 14;
                 -fx-border-color: rgba(32,48,64,0.10);
-                -fx-border-radius: 14;
+                -fx-border-radius: 8;
                 """);
         return toolbar;
     }
@@ -130,8 +129,8 @@ final class MainPanel extends BorderPane {
         contentGrid.getChildren().clear();
         contentGrid.getColumnConstraints().clear();
         contentGrid.getRowConstraints().clear();
-        contentGrid.setHgap(12);
-        contentGrid.setVgap(12);
+        contentGrid.setHgap(2);
+        contentGrid.setVgap(2);
 
         int columns = calculateColumns();
         int rows = calculateRows(columns);
@@ -206,7 +205,7 @@ final class MainPanel extends BorderPane {
     }
 
     private static int normalizeSplitCount(int splitCount) {
-        if (splitCount == 4 || splitCount == 6) {
+        if (splitCount >= 1 && splitCount <= 10) {
             return splitCount;
         }
         return 2;

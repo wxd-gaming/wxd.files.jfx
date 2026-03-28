@@ -1,5 +1,7 @@
 package org.example;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -18,6 +20,10 @@ import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -26,7 +32,6 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -44,39 +49,43 @@ final class FileBrowserPane extends VBox {
     private final ComboBox<Path> driveSelector = new ComboBox<>();
     private final TableView<FileItem> tableView = new TableView<>();
     private final Consumer<Path> pathChangedListener;
+    private final Timeline autoRefreshTimeline;
+    private final TextField filterField = new TextField();
+    private final List<FileItem> allItems = new ArrayList<>();
     private Path currentPath;
     private boolean updatingDriveSelection;
+    private long lastModifiedTime;
 
     FileBrowserPane(Path initialPath, Consumer<Path> pathChangedListener) {
         this.pathChangedListener = Objects.requireNonNullElse(pathChangedListener, path -> {});
         this.currentPath = resolveInitialPath(initialPath);
-        setSpacing(14);
-        setPadding(new Insets(16));
+        setSpacing(8);
+        setPadding(new Insets(4));
         getStyleClass().add("file-browser-pane");
         if (!getStylesheets().contains(STYLESHEET)) {
             getStylesheets().add(STYLESHEET);
         }
 
-        getChildren().addAll(createHeader(), createTable());
+        this.autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> autoRefresh()));
+        this.autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+
+        getChildren().addAll(createHeader(), createTable(), createFilter());
         VBox.setVgrow(tableView, Priority.ALWAYS);
         refresh();
+        this.autoRefreshTimeline.play();
         this.pathChangedListener.accept(currentPath);
     }
 
     private Node createHeader() {
         Button upButton = new Button("上一级");
-        styleActionButton(upButton, false);
+        styleActionButton(upButton);
         upButton.setOnAction(event -> {
             if (currentPath.getParent() != null) {
                 openPath(currentPath.getParent());
             }
         });
 
-        Button refreshButton = new Button("刷新");
-        styleActionButton(refreshButton, true);
-        refreshButton.setOnAction(event -> refresh());
-
-        driveSelector.setPrefWidth(120);
+        driveSelector.setPrefWidth(80);
         driveSelector.setVisibleRowCount(12);
         driveSelector.getStyleClass().add("drive-selector");
         driveSelector.setButtonCell(new ListCell<>() {
@@ -114,17 +123,34 @@ final class FileBrowserPane extends VBox {
         pathField.setOnAction(event -> openFromInput());
         HBox.setHgrow(pathField, Priority.ALWAYS);
 
-        HBox header = new HBox(8, upButton, refreshButton, driveSelector, pathField);
+        HBox header = new HBox(6, upButton, driveSelector, pathField);
         header.getStyleClass().add("file-browser-header");
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(0, 0, 2, 0));
+        header.setPadding(new Insets(0, 0, 0, 0));
         return header;
+    }
+
+    private Node createFilter() {
+        filterField.setPromptText("过滤: 输入文件名进行筛选");
+        filterField.getStyleClass().add("filter-field");
+        filterField.textProperty().addListener((observable, oldValue, newValue) -> applyFilter());
+        HBox.setHgrow(filterField, Priority.ALWAYS);
+
+        Button openInExplorerButton = new Button("系统管理器");
+        styleActionButton(openInExplorerButton);
+        openInExplorerButton.setOnAction(event -> openInSystemExplorer());
+
+        Button csvViewerButton = new Button("CSV 查看");
+        styleActionButton(csvViewerButton);
+        csvViewerButton.setOnAction(event -> openCsvViewer());
+
+        return new HBox(6, filterField, openInExplorerButton, csvViewerButton);
     }
 
     private Node createTable() {
         tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         tableView.setPlaceholder(createPlaceholder());
-        tableView.setFixedCellSize(42);
+        tableView.setFixedCellSize(36);
         tableView.getStyleClass().add("file-table");
 
         TableColumn<FileItem, FileItem> iconColumn = new TableColumn<>(" ");
@@ -183,13 +209,20 @@ final class FileBrowserPane extends VBox {
                     FileItem item = row.getItem();
                     if (item.directory()) {
                         openPath(item.path());
+                    } else {
+                        openFileWithDefaultApp(item.path());
                     }
                 }
             });
             row.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
                 if (row.isEmpty()) {
+                    // 空白处显示当前目录的右键菜单
+                    if (WindowsShellContextMenu.show(currentPath, event.getScreenX(), event.getScreenY())) {
+                        event.consume();
+                    }
                     return;
                 }
+                // 有内容的地方显示选中文件的右键菜单
                 tableView.getSelectionModel().select(row.getIndex());
                 if (WindowsShellContextMenu.show(row.getItem().path(), event.getScreenX(), event.getScreenY())) {
                     event.consume();
@@ -200,9 +233,9 @@ final class FileBrowserPane extends VBox {
         return tableView;
     }
 
-    private void styleActionButton(Button button, boolean primary) {
+    private void styleActionButton(Button button) {
         button.getStyleClass().add("action-button");
-        button.getStyleClass().add(primary ? "primary-button" : "secondary-button");
+        button.getStyleClass().add("secondary-button");
     }
 
     private Label createPlaceholder() {
@@ -227,17 +260,24 @@ final class FileBrowserPane extends VBox {
     private void refresh() {
         pathField.setText(currentPath.toString());
         syncDriveSelection();
+        try {
+            lastModifiedTime = Files.getLastModifiedTime(currentPath).toMillis();
+        } catch (IOException e) {
+            lastModifiedTime = 0;
+        }
         try (Stream<Path> pathStream = Files.list(currentPath)) {
-            List<FileItem> items = pathStream
+            allItems.clear();
+            allItems.addAll(pathStream
                     .map(FileItem::from)
                     .sorted(Comparator
                             .comparing(FileItem::directory).reversed()
                             .thenComparing(FileItem::name, String.CASE_INSENSITIVE_ORDER))
-                    .collect(Collectors.toList());
-            tableView.setItems(FXCollections.observableArrayList(items));
+                    .collect(Collectors.toList()));
+            applyFilter();
         } catch (IOException exception) {
             MainApplication.showError("无法读取目录", currentPath + System.lineSeparator() + exception.getMessage());
-            tableView.setItems(FXCollections.emptyObservableList());
+            allItems.clear();
+            applyFilter();
         }
     }
 
@@ -264,6 +304,56 @@ final class FileBrowserPane extends VBox {
         }
     }
 
+    private void openInSystemExplorer() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String path = currentPath.toAbsolutePath().toString();
+        try {
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                pb = new ProcessBuilder("explorer.exe", path);
+            } else if (os.contains("mac")) {
+                pb = new ProcessBuilder("open", path);
+            } else if (os.contains("nix") || os.contains("nux")) {
+                pb = new ProcessBuilder("xdg-open", path);
+            } else {
+                MainApplication.showError("不支持的操作系统", "无法在系统文件管理器中打开");
+                return;
+            }
+            pb.start();
+        } catch (IOException exception) {
+            MainApplication.showError("打开失败", "无法在系统文件管理器中打开: " + path);
+        }
+    }
+
+    private void openFileWithDefaultApp(Path filePath) {
+        String os = System.getProperty("os.name").toLowerCase();
+        String path = filePath.toAbsolutePath().toString();
+        try {
+            ProcessBuilder pb;
+            if (os.contains("win")) {
+                pb = new ProcessBuilder("cmd.exe", "/c", "start", "\"\"", path);
+            } else if (os.contains("mac")) {
+                pb = new ProcessBuilder("open", path);
+            } else if (os.contains("nix") || os.contains("nux")) {
+                pb = new ProcessBuilder("xdg-open", path);
+            } else {
+                MainApplication.showError("不支持的操作系统", "无法打开文件");
+                return;
+            }
+            pb.start();
+        } catch (IOException exception) {
+            MainApplication.showError("打开失败", "无法打开文件: " + path);
+        }
+    }
+
+    private void openCsvViewer() {
+        CsvViewerPane csvViewer = new CsvViewerPane(currentPath);
+        javafx.stage.Stage stage = new javafx.stage.Stage();
+        stage.setTitle("CSV 文件查看器 - " + currentPath.getFileName());
+        stage.setScene(new javafx.scene.Scene(csvViewer, 1000, 700));
+        stage.show();
+    }
+
     private static Path initialPath() {
         return Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize();
     }
@@ -278,6 +368,30 @@ final class FileBrowserPane extends VBox {
             return normalized;
         }
         return fallback;
+    }
+
+    private void applyFilter() {
+        String filterText = filterField.getText().trim().toLowerCase();
+        List<FileItem> filteredItems;
+        if (filterText.isEmpty()) {
+            filteredItems = new ArrayList<>(allItems);
+        } else {
+            filteredItems = allItems.stream()
+                    .filter(item -> item.name().toLowerCase().contains(filterText))
+                    .collect(Collectors.toList());
+        }
+        tableView.setItems(FXCollections.observableArrayList(filteredItems));
+    }
+
+    private void autoRefresh() {
+        try {
+            long currentModifiedTime = Files.getLastModifiedTime(currentPath).toMillis();
+            if (currentModifiedTime > lastModifiedTime) {
+                refresh();
+            }
+        } catch (IOException e) {
+            // Ignore errors during auto-refresh
+        }
     }
 
     private void syncDriveSelection() {

@@ -44,4 +44,12 @@ public class MainApplication extends Application {
         alert.setContentText(content);
         alert.showAndWait();
     }
+
+    static void showInfo(String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Folder Manager");
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
 }

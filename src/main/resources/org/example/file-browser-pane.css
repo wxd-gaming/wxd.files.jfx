@@ -2,7 +2,7 @@
     -fx-background-color: linear-gradient(to bottom, rgba(255,255,255,0.98), rgba(244,248,252,0.96));
     -fx-background-radius: 20;
     -fx-border-color: rgba(41,60,78,0.10);
-    -fx-border-radius: 18;
+    -fx-border-radius: 8;
     -fx-effect: dropshadow(gaussian, rgba(28,42,56,0.08), 18, 0.18, 0, 6);
 }
 
@@ -14,7 +14,7 @@
     -fx-background-radius: 999;
     -fx-border-radius: 999;
     -fx-border-width: 1;
-    -fx-padding: 10 18 10 18;
+    -fx-padding: 6 14 6 14;
     -fx-font-size: 13px;
     -fx-font-weight: 700;
     -fx-cursor: hand;
@@ -46,7 +46,8 @@
 }
 
 .drive-selector,
-.path-field {
+.path-field,
+.filter-field {
     -fx-font-size: 13px;
 }
 
@@ -60,7 +61,8 @@
 }
 
 .drive-selector:focused,
-.path-field:focused {
+.path-field:focused,
+.filter-field:focused {
     -fx-border-color: #7cb6ff;
     -fx-effect: dropshadow(gaussian, rgba(72,134,223,0.18), 10, 0.18, 0, 0);
 }
@@ -79,12 +81,12 @@
 }
 
 .drive-selector-button-cell {
-    -fx-padding: 4 2 4 2;
+    -fx-padding: 3 2 3 2;
 }
 
 .drive-selector-cell {
     -fx-background-color: transparent;
-    -fx-padding: 8 10 8 10;
+    -fx-padding: 6 8 6 8;
     -fx-font-size: 13px;
     -fx-text-fill: #31485e;
 }
@@ -94,24 +96,25 @@
     -fx-background-radius: 8;
 }
 
-.path-field {
+.path-field,
+.filter-field {
     -fx-background-color: #f8fbfd;
-    -fx-background-radius: 12;
+    -fx-background-radius: 10;
     -fx-border-color: #d4deea;
-    -fx-border-radius: 12;
+    -fx-border-radius: 10;
     -fx-border-width: 1;
-    -fx-padding: 10 14 10 14;
+    -fx-padding: 6 10 6 10;
     -fx-text-fill: #1f3346;
     -fx-prompt-text-fill: #8a9aab;
 }
 
 .file-table {
     -fx-background-color: rgba(255,255,255,0.75);
-    -fx-background-radius: 16;
+    -fx-background-radius: 12;
     -fx-border-color: #d9e3ee;
-    -fx-border-radius: 16;
+    -fx-border-radius: 12;
     -fx-border-width: 1;
-    -fx-padding: 6;
+    -fx-padding: 4;
     -fx-table-cell-border-color: transparent;
     -fx-font-size: 13px;
     -fx-selection-bar: transparent;
@@ -150,8 +153,8 @@
 
 .file-table .table-row-cell {
     -fx-background-color: transparent;
-    -fx-background-insets: 4 6 4 6;
-    -fx-background-radius: 12;
+    -fx-background-insets: 2 4 2 4;
+    -fx-background-radius: 8;
     -fx-table-cell-border-color: transparent;
 }
 
@@ -167,7 +170,7 @@
 .file-table .table-cell {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-padding: 0 10 0 10;
+    -fx-padding: 0 8 0 8;
     -fx-alignment: center-left;
 }
 
@@ -188,5 +191,16 @@
 .file-table-placeholder {
     -fx-text-fill: #7c8d9f;
     -fx-font-size: 14px;
-    -fx-padding: 20 0 20 0;
+    -fx-padding: 12 0 12 0;
+}
+
+.filter-field {
+    -fx-background-color: #fafcff;
+    -fx-background-radius: 10;
+    -fx-border-color: #cfd9e6;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-padding: 6 12 6 12;
+    -fx-text-fill: #203548;
+    -fx-prompt-text-fill: #7d8ea2;
 }

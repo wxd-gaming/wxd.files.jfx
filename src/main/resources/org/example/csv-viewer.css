@@ -1,0 +1,180 @@
+/* CSV Viewer Styles */
+
+/* Main Panel */
+.csv-viewer-pane {
+    -fx-background-color: transparent;
+}
+
+/* Left Panel */
+.csv-left-panel {
+    -fx-background-color: rgba(255,255,255,0.95);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(255,255,255,0.3);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 5);
+}
+
+/* Right Panel */
+.csv-right-panel {
+    -fx-background-color: rgba(255,255,255,0.95);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(255,255,255,0.3);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 5);
+}
+
+/* File List */
+.csv-file-list {
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+}
+
+.csv-file-list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #1e293b;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 6;
+}
+
+.csv-file-list-cell:selected,
+.csv-file-list-cell:focused:selected,
+.csv-file-list-cell:selected:focused {
+    -fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6) !important;
+    -fx-text-fill: white !important;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 6;
+    -fx-font-weight: 600;
+}
+
+/* Tab Pane */
+.csv-tab-pane {
+    -fx-background-color: transparent;
+}
+
+.tab {
+    -fx-background-color: rgba(255,255,255,0.9);
+    -fx-border-color: rgba(99,102,241,0.3);
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab:selected {
+    -fx-background-color: rgba(99,102,241,0.15);
+    -fx-border-color: #6366f1;
+}
+
+.tab-label {
+    -fx-text-fill: #475569;
+    -fx-font-size: 13px;
+}
+
+.tab:selected .tab-label {
+    -fx-text-fill: #6366f1;
+    -fx-font-weight: 600;
+}
+
+/* Table Panel */
+.csv-table-panel {
+    -fx-background-color: rgba(255,255,255,0.95);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(255,255,255,0.3);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 5);
+}
+
+/* CSV Table */
+.csv-table {
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+    -fx-table-cell-border-color: transparent;
+}
+
+.csv-table .table-row-cell:filled:selected {
+    -fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6) !important;
+    -fx-text-fill: white !important;
+    -fx-font-weight: 600;
+}
+
+.csv-table .table-row-cell:filled:hover:not(.selected) {
+    -fx-background-color: rgba(232,241,249,0.8);
+}
+
+.csv-table-column {
+    /*-fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6);*/
+}
+
+.csv-table-column .label {
+    -fx-text-fill: #1e293b;
+    -fx-font-weight: 800;
+    -fx-font-size: 14px;
+    -fx-alignment: center-left;
+    -fx-padding: 14 20 14 20;
+}
+
+.csv-table-cell {
+    -fx-alignment: center-left;
+    -fx-padding: 10 16 10 16;
+    -fx-border-color: rgba(226, 232, 240, 0.3);
+    -fx-border-width: 0 0 1 0;
+    -fx-background-color: transparent;
+    -fx-text-fill: #1e293b;
+}
+
+/* Footer */
+.csv-footer {
+    -fx-background-color: rgba(248,250,252,0.9);
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.csv-footer-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #6366f1;
+    -fx-font-size: 14px;
+}
+
+.csv-footer-sublabel {
+    -fx-font-size: 12px;
+    -fx-text-fill: #64748b;
+    -fx-font-weight: 500;
+}
+
+/* Buttons */
+.csv-button {
+    -fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 8 16 8 16;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+
+.csv-button:hover {
+    -fx-background-color: linear-gradient(to bottom right, #5558f0, #7c4ce8);
+}
+
+/* Filter Fields */
+.csv-filter-field {
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 10;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 10;
+    -fx-border-width: 2;
+    -fx-padding: 8 12 8 12;
+    -fx-text-fill: #475569;
+    -fx-font-size: 13px;
+}
+
+.csv-filter-field:focused {
+    -fx-border-color: #6366f1;
+}
+
+/* Split Pane */
+.csv-split-pane {
+    -fx-background-color: transparent;
+    -fx-divider-color: rgba(255,255,255,0.3);
+    -fx-padding: 0;
+}
