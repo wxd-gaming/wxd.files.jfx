@@ -12,8 +12,14 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -167,11 +173,24 @@ final class CsvMainPanel extends BorderPane {
     private void loadFiles() {
         try {
             lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
-            List<String> csvFiles = Files.walk(currentDirectory)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".csv"))
-                    .map(p -> currentDirectory.relativize(p).toString())
-                    .sorted()
-                    .collect(Collectors.toList());
+            List<String> csvFiles = new ArrayList<>();
+            Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
+                    new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            if (file.toString().toLowerCase().endsWith(".csv")) {
+                                csvFiles.add(currentDirectory.relativize(file).toString());
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+
+                        @Override
+                        public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                            // Ignore access denied errors and continue
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+            csvFiles.sort(String::compareTo);
             fileList.setItems(FXCollections.observableArrayList(csvFiles));
         } catch (IOException e) {
             MainApplication.showError("加载文件失败", e.getMessage());
@@ -185,12 +204,27 @@ final class CsvMainPanel extends BorderPane {
         }
         try {
             lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
-            List<String> csvFiles = Files.walk(currentDirectory)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".csv"))
-                    .map(p -> currentDirectory.relativize(p).toString())
-                    .filter(name -> matchesFilter(name, filterText))
-                    .sorted()
-                    .collect(Collectors.toList());
+            List<String> csvFiles = new ArrayList<>();
+            Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
+                    new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            if (file.toString().toLowerCase().endsWith(".csv")) {
+                                String fileName = currentDirectory.relativize(file).toString();
+                                if (matchesFilter(fileName, filterText)) {
+                                    csvFiles.add(fileName);
+                                }
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+
+                        @Override
+                        public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                            // Ignore access denied errors and continue
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+            csvFiles.sort(String::compareTo);
             fileList.setItems(FXCollections.observableArrayList(csvFiles));
         } catch (IOException e) {
             MainApplication.showError("过滤文件失败", e.getMessage());

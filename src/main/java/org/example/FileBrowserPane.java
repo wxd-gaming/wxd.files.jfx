@@ -131,7 +131,7 @@ final class FileBrowserPane extends VBox {
     }
 
     private Node createFilter() {
-        filterField.setPromptText("过滤: 输入文件名进行筛选");
+        filterField.setPromptText("过滤: 支持 ||(或) &&(且) 例如: pdf||doc, test&&2025");
         filterField.getStyleClass().add("filter-field");
         filterField.textProperty().addListener((observable, oldValue, newValue) -> applyFilter());
         HBox.setHgrow(filterField, Priority.ALWAYS);
@@ -154,6 +154,7 @@ final class FileBrowserPane extends VBox {
         tableView.getStyleClass().add("file-table");
 
         TableColumn<FileItem, FileItem> iconColumn = new TableColumn<>(" ");
+        iconColumn.setMinWidth(70);
         iconColumn.setMaxWidth(70);
         iconColumn.setResizable(false);
         iconColumn.setSortable(false);
@@ -186,16 +187,19 @@ final class FileBrowserPane extends VBox {
         });
 
         TableColumn<FileItem, String> typeColumn = new TableColumn<>("类型");
+        typeColumn.setMinWidth(120);
         typeColumn.setMaxWidth(120);
         typeColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().type()));
         typeColumn.setCellFactory(column -> mutedCell());
 
         TableColumn<FileItem, String> sizeColumn = new TableColumn<>("大小");
+        sizeColumn.setMinWidth(120);
         sizeColumn.setMaxWidth(120);
         sizeColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().sizeText()));
         sizeColumn.setCellFactory(column -> mutedCell());
 
         TableColumn<FileItem, String> timeColumn = new TableColumn<>("修改时间");
+        timeColumn.setMinWidth(170);
         timeColumn.setMaxWidth(170);
         timeColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().modifiedText()));
         timeColumn.setCellFactory(column -> mutedCell());
@@ -371,16 +375,73 @@ final class FileBrowserPane extends VBox {
     }
 
     private void applyFilter() {
-        String filterText = filterField.getText().trim().toLowerCase();
+        String filterText = filterField.getText().trim();
         List<FileItem> filteredItems;
         if (filterText.isEmpty()) {
             filteredItems = new ArrayList<>(allItems);
         } else {
             filteredItems = allItems.stream()
-                    .filter(item -> item.name().toLowerCase().contains(filterText))
+                    .filter(item -> matchesFilter(item.name().toLowerCase(), filterText.toLowerCase()))
                     .collect(Collectors.toList());
         }
         tableView.setItems(FXCollections.observableArrayList(filteredItems));
+    }
+
+    private boolean matchesFilter(String fileName, String filter) {
+        // 处理括号表达式
+        filter = filter.trim();
+        if (filter.startsWith("(") && findMatchingParen(filter) == filter.length() - 1) {
+            return matchesFilter(fileName, filter.substring(1, filter.length() - 1));
+        }
+
+        // 查找最外层的 || 运算符（不在括号内的）
+        int orPos = findOperator(filter, "||");
+        if (orPos != -1) {
+            String left = filter.substring(0, orPos).trim();
+            String right = filter.substring(orPos + 2).trim();
+            return matchesFilter(fileName, left) || matchesFilter(fileName, right);
+        }
+
+        // 查找最外层的 && 运算符（不在括号内的）
+        int andPos = findOperator(filter, "&&");
+        if (andPos != -1) {
+            String left = filter.substring(0, andPos).trim();
+            String right = filter.substring(andPos + 2).trim();
+            return matchesFilter(fileName, left) && matchesFilter(fileName, right);
+        }
+
+        // 基础条件：包含关键词
+        if (!filter.isEmpty()) {
+            return fileName.contains(filter);
+        }
+
+        return true;
+    }
+
+    private int findOperator(String str, String operator) {
+        int depth = 0;
+        for (int i = 0; i <= str.length() - operator.length(); i++) {
+            char c = str.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (depth == 0 && str.substring(i, i + operator.length()).equals(operator)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findMatchingParen(String str) {
+        int depth = 0;
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (c == '(') depth++;
+            else if (c == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
     }
 
     private void autoRefresh() {
