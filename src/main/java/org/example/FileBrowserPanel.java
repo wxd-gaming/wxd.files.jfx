@@ -56,7 +56,7 @@ final class FileBrowserPanel extends VBox {
             getStylesheets().add(STYLESHEET);
         }
 
-        this.autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> autoRefresh()));
+        this.autoRefreshTimeline = new Timeline(new KeyFrame(Duration.millis(200), event -> autoRefresh()));
         this.autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
 
         getChildren().addAll(createHeader(), createTable(), createFilter());
