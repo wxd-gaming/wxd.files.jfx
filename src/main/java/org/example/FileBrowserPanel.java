@@ -326,23 +326,51 @@ final class FileBrowserPanel extends VBox {
         // 设置nameColumn的最小宽度为140，并允许其自动扩展
         nameColumn.setMinWidth(140);
         nameColumn.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().name()));
-        nameColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (item == null || item.isBlank() || empty) {
-                    setText("");
-                    setTooltip(null);
-                } else {
-                    setText(item);
-                    // 修改这里以展示文件的全路径作为tooltip
-                    FileItem fileItem = getTableView().getItems().get(getIndex());
-                    setTooltip(new Tooltip(fileItem.path().toString()));
+        nameColumn.setCellFactory(column -> {
+
+            TableCell<FileItem, String> tableCell = new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (item == null || item.isBlank() || empty) {
+                        setText("");
+                        setTooltip(null);
+                    } else {
+                        setText(item);
+                        // 修改这里以展示文件的全路径作为tooltip
+                        FileItem fileItem = getTableView().getItems().get(getIndex());
+                        setTooltip(new Tooltip(fileItem.path().toString()));
+                    }
+                    if (!getStyleClass().contains("name-cell")) {
+                        getStyleClass().add("name-cell");
+                    }
                 }
-                if (!getStyleClass().contains("name-cell")) {
-                    getStyleClass().add("name-cell");
+            };
+
+            tableCell.setOnMouseClicked(event -> {
+                TableRow<FileItem> tableRow = tableCell.getTableRow();
+                if (event.getClickCount() == 2 && !tableRow.isEmpty()) {
+                    FileItem item = tableRow.getItem();
+                    if (item.directory()) {
+                        openPath(item.path());
+                    } else {
+                        openFileWithDefaultApp(item.path());
+                    }
                 }
-            }
+            });
+
+            tableCell.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
+                TableRow<FileItem> tableRow = tableCell.getTableRow();
+                if (!tableRow.isEmpty()) {
+                    // 有内容的地方显示选中文件的右键菜单
+                    tableView.getSelectionModel().select(tableRow.getIndex());
+                    if (WindowsShellContextMenu.show(tableRow.getItem().path(), event.getScreenX(), event.getScreenY())) {
+                        event.consume();
+                    }
+                }
+            });
+
+            return tableCell;
         });
 
         TableColumn<FileItem, String> typeColumn = new TableColumn<>("类型");
@@ -369,29 +397,29 @@ final class FileBrowserPanel extends VBox {
         tableView.setRowFactory(view -> {
             TableRow<FileItem> row = new TableRow<>();
             row.getStyleClass().add("file-table-row");
-            row.setOnMouseClicked(event -> {
-                if (event.getClickCount() == 2 && !row.isEmpty()) {
-                    FileItem item = row.getItem();
-                    if (item.directory()) {
-                        openPath(item.path());
-                    } else {
-                        openFileWithDefaultApp(item.path());
-                    }
-                }
-            });
+//            row.setOnMouseClicked(event -> {
+//                if (event.getClickCount() == 2 && !row.isEmpty()) {
+//                    FileItem item = row.getItem();
+//                    if (item.directory()) {
+//                        openPath(item.path());
+//                    } else {
+//                        openFileWithDefaultApp(item.path());
+//                    }
+//                }
+//            });
             row.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
-                if (row.isEmpty()) {
+//                if (row.isEmpty()) {
                     // 空白处显示当前目录的右键菜单
                     if (WindowsShellContextMenu.show(panelBean.ofPath(), event.getScreenX(), event.getScreenY())) {
                         event.consume();
                     }
                     return;
-                }
-                // 有内容的地方显示选中文件的右键菜单
-                tableView.getSelectionModel().select(row.getIndex());
-                if (WindowsShellContextMenu.show(row.getItem().path(), event.getScreenX(), event.getScreenY())) {
-                    event.consume();
-                }
+//                }
+//                // 有内容的地方显示选中文件的右键菜单
+//                tableView.getSelectionModel().select(row.getIndex());
+//                if (WindowsShellContextMenu.show(row.getItem().path(), event.getScreenX(), event.getScreenY())) {
+//                    event.consume();
+//                }
             });
             return row;
         });
