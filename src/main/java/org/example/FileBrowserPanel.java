@@ -12,6 +12,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -325,8 +326,9 @@ final class FileBrowserPanel extends VBox {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (item == null || item.isBlank()) {
+                if (item == null || item.isBlank() || empty) {
                     setText("");
+                    setTooltip(new Tooltip(""));
                 } else {
                     setText(item);
                     // 修改这里以展示文件的全路径作为tooltip
