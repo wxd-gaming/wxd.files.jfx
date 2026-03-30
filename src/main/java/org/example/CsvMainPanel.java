@@ -2,7 +2,9 @@ package org.example;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -12,17 +14,12 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * CSV Main Panel - Main interface for CSV viewer with file list and tabbed CSV display
@@ -38,7 +35,11 @@ final class CsvMainPanel extends BorderPane {
     private long lastModifiedTime;
 
     // Store tabs to prevent duplicates
+    private final TextField filterField = new TextField();
+    private SplitPane splitPane;
     private final javafx.collections.ObservableMap<String, CsvTablePanel> openTabs = javafx.collections.FXCollections.observableHashMap();
+
+    private final ProgressIndicator progressIndicator = new ProgressIndicator();
 
     private static final String STYLESHEET = Objects.requireNonNull(
             CsvMainPanel.class.getResource("/org/example/csv-viewer.css"),
@@ -53,12 +54,44 @@ final class CsvMainPanel extends BorderPane {
             getStylesheets().add(STYLESHEET);
         }
 
-        this.autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), event -> autoRefresh()));
+        this.autoRefreshTimeline = new Timeline(new KeyFrame(Duration.millis(100), event -> autoRefresh()));
         this.autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
 
         setupUI();
+
         loadFiles();
         this.autoRefreshTimeline.play();
+    }
+
+    private List<String> loadFilesInBackground() {
+        try {
+            lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
+            List<String> csvFiles = new ArrayList<>();
+            String filterText = filterField.getText();
+            Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
+                    new SimpleFileVisitor<>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                            if (file.toString().toLowerCase().endsWith(".csv")) {
+                                String fileName = currentDirectory.relativize(file).toString();
+                                if (matchesFilter(fileName, filterText)) {
+                                    csvFiles.add(fileName);
+                                }
+                            }
+                            return FileVisitResult.CONTINUE;
+                        }
+
+                        @Override
+                        public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                            // Ignore access denied errors and continue
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+            csvFiles.sort(String::compareTo);
+            return csvFiles;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void setupUI() {
@@ -104,7 +137,7 @@ final class CsvMainPanel extends BorderPane {
         rightPanel.getStyleClass().add("csv-right-panel");
 
         // Split pane
-        SplitPane splitPane = new SplitPane(leftPanel, rightPanel);
+        splitPane = new SplitPane(leftPanel, rightPanel);
         splitPane.setDividerPositions(0.2);
         splitPane.getStyleClass().add("csv-split-pane");
         splitPane.setPadding(new Insets(0));
@@ -154,12 +187,15 @@ final class CsvMainPanel extends BorderPane {
         filterLabel.getStyleClass().add("csv-footer-sublabel");
         filterLabel.setPadding(new Insets(2, 0, 2, 0));
 
-        TextField filterField = new TextField();
+
         filterField.setPromptText("例如: data||test 或 report&&2024");
         filterField.getStyleClass().add("csv-filter-field");
         HBox.setHgrow(filterField, Priority.ALWAYS);
 
-        filterField.textProperty().addListener((obs, oldVal, newVal) -> filterFiles(newVal));
+        filterField.textProperty().addListener((obs, oldVal, newVal) -> {
+            List<String> list = fileList.getItems().stream().filter(file -> matchesFilter(file, newVal)).toList();
+            fileList.setItems(FXCollections.observableArrayList(list));
+        });
 
         HBox filterBox = new HBox(0, filterField);
         filterBox.setPadding(new Insets(6, 0, 6, 0));
@@ -171,64 +207,27 @@ final class CsvMainPanel extends BorderPane {
     }
 
     private void loadFiles() {
-        try {
-            lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
-            List<String> csvFiles = new ArrayList<>();
-            Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
-                    new SimpleFileVisitor<>() {
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                            if (file.toString().toLowerCase().endsWith(".csv")) {
-                                csvFiles.add(currentDirectory.relativize(file).toString());
-                            }
-                            return FileVisitResult.CONTINUE;
-                        }
+        setCenter(progressIndicator);
+        // Start loading files in a background thread
+        Task<List<String>> loadFilesTask = new Task<>() {
+            @Override
+            protected List<String> call() throws Exception {
+                return loadFilesInBackground();
+            }
+        };
+        loadFilesTask.setOnSucceeded(event -> {
+            List<String> csvFiles = loadFilesTask.getValue();
+            Platform.runLater(() -> {
+                fileList.setItems(FXCollections.observableArrayList(csvFiles));
+                setCenter(splitPane);
+            });
+        });
+        loadFilesTask.setOnFailed(event -> {
+            MainApplication.showError("加载文件失败", loadFilesTask.getException().getMessage());
+            setCenter(splitPane);
+        });
 
-                        @Override
-                        public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                            // Ignore access denied errors and continue
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
-            csvFiles.sort(String::compareTo);
-            fileList.setItems(FXCollections.observableArrayList(csvFiles));
-        } catch (IOException e) {
-            MainApplication.showError("加载文件失败", e.getMessage());
-        }
-    }
-
-    private void filterFiles(String filterText) {
-        if (filterText == null || filterText.trim().isEmpty()) {
-            loadFiles();
-            return;
-        }
-        try {
-            lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
-            List<String> csvFiles = new ArrayList<>();
-            Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
-                    new SimpleFileVisitor<>() {
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                            if (file.toString().toLowerCase().endsWith(".csv")) {
-                                String fileName = currentDirectory.relativize(file).toString();
-                                if (matchesFilter(fileName, filterText)) {
-                                    csvFiles.add(fileName);
-                                }
-                            }
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                            // Ignore access denied errors and continue
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
-            csvFiles.sort(String::compareTo);
-            fileList.setItems(FXCollections.observableArrayList(csvFiles));
-        } catch (IOException e) {
-            MainApplication.showError("过滤文件失败", e.getMessage());
-        }
+        new Thread(loadFilesTask).start();
     }
 
     private void autoRefresh() {
@@ -243,7 +242,7 @@ final class CsvMainPanel extends BorderPane {
     }
 
     private boolean matchesFilter(String text, String filterText) {
-        if (filterText.isEmpty()) {
+        if (filterText == null || filterText.isEmpty()) {
             return true;
         }
 
