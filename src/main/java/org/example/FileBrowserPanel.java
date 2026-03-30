@@ -431,13 +431,60 @@ final class FileBrowserPanel extends VBox {
                     .map(FileItem::from)
                     .sorted(Comparator
                             .comparing(FileItem::directory).reversed()
-                            .thenComparing(FileItem::name, String.CASE_INSENSITIVE_ORDER))
+                            .thenComparing(FileItem::name, new NaturalSortComparator()))
                     .toList());
             applyFilter();
         } catch (IOException exception) {
             MainApplication.showError("无法读取目录", panelBean.path + System.lineSeparator() + exception.getMessage());
             allItems.clear();
             applyFilter();
+        }
+    }
+
+    static class NaturalSortComparator implements Comparator<String> {
+        @Override
+        public int compare(String a, String b) {
+            // 将字符串拆分为数字部分和非数字部分进行比较
+            char[] aChars = a.toCharArray();
+            char[] bChars = b.toCharArray();
+
+            int aIndex = 0, bIndex = 0;
+
+            while (aIndex < aChars.length && bIndex < bChars.length) {
+                char aChar = aChars[aIndex];
+                char bChar = bChars[bIndex];
+
+                // 如果都是数字，则解析整个数字进行比较
+                if (Character.isDigit(aChar) && Character.isDigit(bChar)) {
+                    // 解析a中的数字
+                    int aNum = 0;
+                    while (aIndex < aChars.length && Character.isDigit(aChars[aIndex])) {
+                        aNum = aNum * 10 + (aChars[aIndex] - '0');
+                        aIndex++;
+                    }
+
+                    // 解析b中的数字
+                    int bNum = 0;
+                    while (bIndex < bChars.length && Character.isDigit(bChars[bIndex])) {
+                        bNum = bNum * 10 + (bChars[bIndex] - '0');
+                        bIndex++;
+                    }
+
+                    if (aNum != bNum) {
+                        return Integer.compare(aNum, bNum);
+                    }
+                } else {
+                    // 非数字部分按字符比较
+                    if (aChar != bChar) {
+                        return Character.compare(aChar, bChar);
+                    }
+                    aIndex++;
+                    bIndex++;
+                }
+            }
+
+            // 比较长度
+            return Integer.compare(a.length(), b.length());
         }
     }
 
