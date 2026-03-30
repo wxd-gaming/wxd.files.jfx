@@ -8,14 +8,22 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
+import java.awt.*;
+import java.awt.datatransfer.*;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -71,6 +79,133 @@ final class FileBrowserPanel extends VBox {
                 selectedPanel = this;
             }
         });
+        // 新增: 设置键盘事件过滤器
+        addEventFilter(KeyEvent.KEY_PRESSED, keyEvent -> {
+            if (keyEvent.isControlDown()) {
+                switch (keyEvent.getCode()) {
+                    case C: // Ctrl+C
+                        copySelectedPathToClipboard();
+                        break;
+                    case V: // Ctrl+V
+                        pasteFromClipboard();
+                        break;
+                }
+            }
+        });
+    }
+
+    private void copySelectedPathToClipboard() {
+        int selectedIndex = tableView.getSelectionModel().getSelectedIndex();
+        if (selectedIndex >= 0) {
+            FileItem selectedItem = tableView.getItems().get(selectedIndex);
+            String path = selectedItem.path().toString();
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(new StringSelection(path), null);
+        }
+    }
+
+    private void pasteFromClipboard() {
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        Transferable contents = clipboard.getContents(null);
+        if (contents == null) {
+            return;
+        }
+        try {
+            // 尝试处理文件列表
+            if (contents.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                List<File> files = (List<File>) contents.getTransferData(DataFlavor.javaFileListFlavor);
+                for (File file : files) {
+                    Path source = file.toPath();
+                    // 复制逻辑与之前相同...
+                    // 检查源路径是否为文件夹
+                    if (Files.isDirectory(source)) {
+                        // 获取源文件夹的名称
+                        String sourceFolderName = source.getFileName().toString();
+                        Path targetSubDir = panelBean.ofPath().resolve(sourceFolderName);
+                        Path targetDir;
+                        // 如果目标位置已经存在同名文件夹，则将内容复制到该文件夹中
+                        if (Files.exists(targetSubDir) && Files.isDirectory(targetSubDir)) {
+                            targetDir = targetSubDir;
+                        } else {
+                            // 否则创建新的文件夹
+                            Files.createDirectories(targetSubDir);
+                            targetDir = targetSubDir;
+                        }
+
+                        // 如果是文件夹，递归复制子文件夹和文件，并保持目录结构
+                        Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
+                            @Override
+                            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                                Path relativePath = source.relativize(dir);
+                                Path targetPath = targetDir.resolve(relativePath);
+                                Files.createDirectories(targetPath);
+                                return FileVisitResult.CONTINUE;
+                            }
+
+                            @Override
+                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                                Path relativePath = source.relativize(file);
+                                Path targetPath = targetDir.resolve(relativePath);
+                                Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                                return FileVisitResult.CONTINUE;
+                            }
+                        });
+                    } else {
+                        // 如果是文件，直接复制
+                        Path targetDir = panelBean.ofPath();
+                        Files.copy(source, targetDir.resolve(source.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                refresh(); // 刷新视图以反映更改
+            }
+            // 仍然保留对字符串路径的支持
+            else if (contents.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                String sourcePath = (String) contents.getTransferData(DataFlavor.stringFlavor);
+                Path source = Paths.get(sourcePath);
+
+                // 检查源路径是否为文件夹
+                if (Files.isDirectory(source)) {
+                    // 获取源文件夹的名称
+                    String sourceFolderName = source.getFileName().toString();
+                    Path targetSubDir = panelBean.ofPath().resolve(sourceFolderName);
+                    Path targetDir;
+                    // 如果目标位置已经存在同名文件夹，则将内容复制到该文件夹中
+                    if (Files.exists(targetSubDir) && Files.isDirectory(targetSubDir)) {
+                        targetDir = targetSubDir;
+                    } else {
+                        // 否则创建新的文件夹
+                        Files.createDirectories(targetSubDir);
+                        targetDir = targetSubDir;
+                    }
+
+                    // 如果是文件夹，递归复制子文件夹和文件，并保持目录结构
+                    Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
+                        @Override
+                        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                            Path relativePath = source.relativize(dir);
+                            Path targetPath = targetDir.resolve(relativePath);
+                            Files.createDirectories(targetPath);
+                            return FileVisitResult.CONTINUE;
+                        }
+
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                            Path relativePath = source.relativize(file);
+                            Path targetPath = targetDir.resolve(relativePath);
+                            Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+                } else {
+                    // 如果是文件，直接复制
+                    Path targetDir = panelBean.ofPath();
+                    Files.copy(source, targetDir.resolve(source.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                }
+                refresh(); // 刷新视图以反映更改
+            }
+        } catch (UnsupportedFlavorException | IOException e) {
+            MainApplication.showError("粘贴失败", "无法从剪切板粘贴: " + e.getMessage());
+        }
     }
 
     private void setSelected(boolean selected) {
