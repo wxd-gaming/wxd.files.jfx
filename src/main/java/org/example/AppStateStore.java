@@ -1,79 +1,124 @@
 package org.example;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
 
 final class AppStateStore {
 
+    static final Path emptyPath = Path.of("");
     static final int MAX_SPLIT_COUNT = 10;
 
     private static final Preferences PREFERENCES = Preferences.userNodeForPackage(AppStateStore.class);
-    private static final String KEY_SPLIT_COUNT = "wxd.files.jfx.ui.split.count";
-    private static final String KEY_LAYOUT_MODE = "wxd.files.jfx.ui.layout.mode";
-    private static final String KEY_PATH_PREFIX = "wxd.files.jfx.ui.path.";
 
     private AppStateStore() {
     }
 
+    static int userDirHashcode() {
+        String property = System.getProperty("user.dir");
+        int hashCode = property.hashCode();
+        return Math.abs(hashCode);
+    }
+
+    static String keySplitCount() {
+        return "wxd.files.jfx.ui.split.count." + userDirHashcode();
+    }
+
+    static String keyLayoutCount() {
+        return "wxd.files.jfx.ui.layout.mode." + userDirHashcode();
+    }
+
     static int loadSplitCount() {
-        int count = PREFERENCES.getInt(KEY_SPLIT_COUNT, 4);
+        int count = PREFERENCES.getInt(keySplitCount(), 4);
         return normalizeSplitCount(count);
     }
 
     static void saveSplitCount(int splitCount) {
-        PREFERENCES.putInt(KEY_SPLIT_COUNT, normalizeSplitCount(splitCount));
+        PREFERENCES.putInt(keySplitCount(), normalizeSplitCount(splitCount));
     }
 
     static String loadLayoutMode() {
-        return PREFERENCES.get(KEY_LAYOUT_MODE, "MIXED");
+        return PREFERENCES.get(keyLayoutCount(), "MIXED");
     }
 
     static void saveLayoutMode(String layoutMode) {
-        PREFERENCES.put(KEY_LAYOUT_MODE, layoutMode);
+        PREFERENCES.put(keyLayoutCount(), layoutMode);
     }
 
-    static List<Path> loadPanePaths(int splitCount) {
-        int normalizedCount = normalizeSplitCount(splitCount);
-        List<Path> paths = new ArrayList<>(normalizedCount);
-        for (int index = 0; index < normalizedCount; index++) {
-            String value = PREFERENCES.get(KEY_PATH_PREFIX + index, "");
-            if (value.isBlank()) {
-                paths.add(null);
-                continue;
+    static String keyPanel(int index) {
+        final String KEY_PANEL_PREFIX = "wxd.files.jfx.ui.panel.";
+        return KEY_PANEL_PREFIX + "." + userDirHashcode() + "." + index;
+    }
+
+    static List<AppStateStore.PanelBean> loadPanePaths() {
+        List<AppStateStore.PanelBean> panelBeanList = new ArrayList<>();
+        for (int index = 0; index < MAX_SPLIT_COUNT; index++) {
+            String value = PREFERENCES.get(keyPanel(index), ""); keyPanel(index);
+            PanelBean panelBean = new PanelBean();
+            if (value != null && !value.isBlank()) {
+                try {
+                    panelBean = new PanelBean(value);
+                } catch (Exception e) {
+
+                }
             }
-            try {
-                paths.add(Paths.get(value));
-            } catch (RuntimeException exception) {
-                paths.add(null);
+            panelBean.index = index;
+            if (panelBean.path == null || panelBean.path.isBlank()) {
+                panelBean.path = System.getProperty("user.home");
             }
+            panelBeanList.add(panelBean);
         }
-        return paths;
+        return panelBeanList;
     }
 
-    static void savePanePath(int index, Path path) {
-        if (index < 0) {
-            return;
-        }
-        if (path == null) {
-            PREFERENCES.remove(KEY_PATH_PREFIX + index);
-            return;
-        }
-        PREFERENCES.put(KEY_PATH_PREFIX + index, path.toAbsolutePath().normalize().toString());
+    static void savePanelBean(PanelBean panelBean) {
+        PREFERENCES.put(keyPanel(panelBean.index), panelBean.toString());
     }
 
-    static void clearPanePathFrom(int startIndex) {
-        for (int index = Math.max(startIndex, 0); index < MAX_SPLIT_COUNT; index++) {
-            PREFERENCES.remove(KEY_PATH_PREFIX + index);
-        }
-    }
-
-    private static int normalizeSplitCount(int splitCount) {
+    static int normalizeSplitCount(int splitCount) {
         if (splitCount >= 1 && splitCount <= MAX_SPLIT_COUNT) {
             return splitCount;
         }
         return 4;
     }
+
+    public static class PanelBean {
+
+        public int index;
+        public String path = "";
+        public String filter = "";
+
+        public PanelBean() {
+        }
+
+        public PanelBean(String args) {
+            String[] split = args.split("<~~>");
+            if (split.length > 1)
+                this.path = split[1];
+            if (split.length > 2)
+                this.filter = split[2];
+        }
+
+        public Path ofPath() {
+
+            if (path == null) {
+                return emptyPath;
+            }
+            Path of = Path.of(path);
+            if (!Files.exists(of))
+                return emptyPath;
+            if (!Files.isDirectory(of)) {
+                return emptyPath;
+            }
+            return of;
+        }
+
+        public String toString() {
+            return index + "<~~>" + path + "<~~>" + filter;
+        }
+
+    }
+
 }

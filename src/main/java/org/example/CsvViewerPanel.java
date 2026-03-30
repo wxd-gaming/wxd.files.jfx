@@ -6,9 +6,9 @@ import java.nio.file.Path;
 /**
  * CSV Viewer Pane - Entry point for CSV file viewing functionality
  */
-final class CsvViewerPane extends BorderPane {
+final class CsvViewerPanel extends BorderPane {
 
-    CsvViewerPane(Path directory) {
+    CsvViewerPanel(Path directory) {
         CsvMainPanel mainPanel = new CsvMainPanel(directory);
         setCenter(mainPanel);
     }

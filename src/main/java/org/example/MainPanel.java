@@ -9,7 +9,6 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +32,7 @@ final class MainPanel extends BorderPane {
     }
 
     private final GridPane contentGrid = new GridPane();
-    private final List<Path> panePaths = new ArrayList<>();
+    List<AppStateStore.PanelBean> panelBeanList = new ArrayList<>();
     private int splitCount;
     private LayoutMode layoutMode;
 
@@ -41,7 +40,7 @@ final class MainPanel extends BorderPane {
         int storedSplitCount = AppStateStore.loadSplitCount();
         splitCount = requestedSplitCount == null ? storedSplitCount : normalizeSplitCount(requestedSplitCount);
         layoutMode = LayoutMode.fromStoredValue(AppStateStore.loadLayoutMode());
-        panePaths.addAll(AppStateStore.loadPanePaths(splitCount));
+        panelBeanList = AppStateStore.loadPanePaths();
         AppStateStore.saveSplitCount(splitCount);
         AppStateStore.saveLayoutMode(layoutMode.name());
         setPadding(new Insets(4));
@@ -71,11 +70,11 @@ final class MainPanel extends BorderPane {
         }
 
         ToggleGroup layoutGroup = new ToggleGroup();
-        RadioButton horizontal = new RadioButton("横向");
+        RadioButton horizontal = new RadioButton("纵向");
         horizontal.setToggleGroup(layoutGroup);
         horizontal.setSelected(layoutMode == LayoutMode.HORIZONTAL);
 
-        RadioButton vertical = new RadioButton("纵向");
+        RadioButton vertical = new RadioButton("横向");
         vertical.setToggleGroup(layoutGroup);
         vertical.setSelected(layoutMode == LayoutMode.VERTICAL);
 
@@ -110,9 +109,7 @@ final class MainPanel extends BorderPane {
             return;
         }
         splitCount = normalizeSplitCount(count);
-        resizeStoredPanePaths(splitCount);
         AppStateStore.saveSplitCount(splitCount);
-        AppStateStore.clearPanePathFrom(splitCount);
         rebuildPanels();
     }
 
@@ -149,14 +146,9 @@ final class MainPanel extends BorderPane {
             contentGrid.getRowConstraints().add(constraints);
         }
 
-        resizeStoredPanePaths(splitCount);
         for (int index = 0; index < splitCount; index++) {
-            final int paneIndex = index;
-            Path initialPath = panePaths.get(index);
-            FileBrowserPane pane = new FileBrowserPane(initialPath, path -> {
-                panePaths.set(paneIndex, path);
-                AppStateStore.savePanePath(paneIndex, path);
-            });
+            AppStateStore.PanelBean initialPath = panelBeanList.get(index);
+            FileBrowserPanel pane = new FileBrowserPanel(initialPath);
             GridPane.setHgrow(pane, Priority.ALWAYS);
             GridPane.setVgrow(pane, Priority.ALWAYS);
             int row = rowFor(index, columns);
@@ -208,15 +200,7 @@ final class MainPanel extends BorderPane {
         if (splitCount >= 1 && splitCount <= AppStateStore.MAX_SPLIT_COUNT) {
             return splitCount;
         }
-        return 2;
+        return 4;
     }
 
-    private void resizeStoredPanePaths(int targetSize) {
-        while (panePaths.size() < targetSize) {
-            panePaths.add(null);
-        }
-        while (panePaths.size() > targetSize) {
-            panePaths.removeLast();
-        }
-    }
 }
