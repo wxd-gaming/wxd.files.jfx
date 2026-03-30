@@ -332,7 +332,7 @@ final class FileBrowserPanel extends VBox {
                 super.updateItem(item, empty);
                 if (item == null || item.isBlank() || empty) {
                     setText("");
-                    setTooltip(new Tooltip(""));
+                    setTooltip(null);
                 } else {
                     setText(item);
                     // 修改这里以展示文件的全路径作为tooltip
