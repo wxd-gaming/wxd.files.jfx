@@ -25,10 +25,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -90,6 +88,12 @@ final class FileBrowserPanel extends VBox {
                     case V: // Ctrl+V
                         pasteFromClipboard();
                         break;
+                }
+            } else if (keyEvent.getCode() == KeyCode.F2) {  // 新增: 检测F2按键
+                int selectedIndex = tableView.getSelectionModel().getSelectedIndex();
+                if (selectedIndex >= 0) {
+                    FileItem selectedItem = tableView.getItems().get(selectedIndex);
+                    renameSelectedItem(selectedItem);  // 调用重命名方法
                 }
             }
         });
@@ -665,4 +669,26 @@ final class FileBrowserPanel extends VBox {
         }
         updatingDriveSelection = false;
     }
+
+    private void renameSelectedItem(FileItem item) {
+        TextInputDialog dialog = new TextInputDialog(item.name());
+        dialog.setTitle("重命名");
+        dialog.setHeaderText(null);
+        dialog.setContentText("请输入新的名称:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent()) {
+            String newName = result.get();
+            Path oldPath = item.path();
+            Path newPath = oldPath.resolveSibling(newName);
+
+            try {
+                Files.move(oldPath, newPath, StandardCopyOption.REPLACE_EXISTING);
+                refresh();  // 刷新视图
+            } catch (IOException e) {
+                MainApplication.showError("重命名失败", "无法重命名文件: " + e.getMessage());
+            }
+        }
+    }
+
 }
