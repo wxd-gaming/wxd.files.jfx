@@ -3,6 +3,7 @@ package org.example;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class MainApplication extends Application {
         Scene scene = new Scene(mainPanel, 1280, 820);
         stage.setTitle("無心道 分屏 文件管理器");
         stage.setScene(scene);
+        stage.getIcons().add(new Image("/app.png"));
         stage.show();
     }
 

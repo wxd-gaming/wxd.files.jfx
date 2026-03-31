@@ -5,7 +5,7 @@ set ROOT_DIR=%~dp0
 cd /d "%ROOT_DIR%"
 
 set APP_NAME=WxdGamingFolderManager
-set APP_VERSION=1.0.0
+set APP_VERSION=1.0.4
 set VENDOR=WxdGaming
 set DIST_DIR=target\dist
 set INPUT_DIR=%DIST_DIR%\input
@@ -36,7 +36,7 @@ echo [3/3] Build app-image with jpackage...
 echo [INFO] This creates a normal runnable .exe (no installer).
 echo [INFO] jpackage still bundles runtime by design.
 
-call jpackage --type app-image --name "%APP_NAME%" --app-version "%APP_VERSION%" --vendor "%VENDOR%" --dest "%IMAGE_DIR%" --input "%INPUT_DIR%" --main-jar "%ALL_JAR%" --main-class org.example.Main
+call jpackage --type app-image --name "%APP_NAME%" --app-version "%APP_VERSION%" --vendor "%VENDOR%" --dest "%IMAGE_DIR%" --input "%INPUT_DIR%" --main-jar "%ALL_JAR%" --main-class org.example.Main --icon "./app.ico"
 if errorlevel 1 exit /b 1
 
 echo.

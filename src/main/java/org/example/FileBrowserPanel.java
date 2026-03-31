@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -52,7 +53,7 @@ final class FileBrowserPanel extends VBox {
 
     FileBrowserPanel(AppStateStore.PanelBean panelBean) {
         this.panelBean = panelBean;
-        setSpacing(8);
+        setSpacing(4);
         setPadding(new Insets(4));
         getStyleClass().add("file-browser-pane");
         if (!getStylesheets().contains(STYLESHEET)) {
@@ -596,6 +597,7 @@ final class FileBrowserPanel extends VBox {
         javafx.stage.Stage stage = new javafx.stage.Stage();
         stage.setTitle("CSV 文件查看器 - " + panelBean.path);
         stage.setScene(new javafx.scene.Scene(csvViewer, 1000, 700));
+        stage.getIcons().add(new Image("/app.png"));
         stage.show();
     }
 

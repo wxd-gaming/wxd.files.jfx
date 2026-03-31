@@ -94,10 +94,10 @@ final class MainPanel extends BorderPane {
 
         HBox toolbar = new HBox(4, title, spacer, splitButtons, buttonSeparator, horizontal, vertical, mixed);
         toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setPadding(new Insets(4, 20, 4, 4));
+        toolbar.setPadding(new Insets(4, 4, 4, 4));
         toolbar.setStyle("""
                 -fx-background-color: rgba(255,255,255,0.92);
-                -fx-background-radius: 14;
+                -fx-background-radius: 8;
                 -fx-border-color: rgba(32,48,64,0.10);
                 -fx-border-radius: 8;
                 """);
