@@ -5,18 +5,11 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -52,7 +45,7 @@ final class CsvTablePanel extends Tab {
             "Missing stylesheet: /org/example/csv-viewer.css"
     ).toExternalForm();
 
-    CsvTablePanel(String fileName, Path filePath) {
+    CsvTablePanel(String fileName, Path filePath, int skipRows) {
         super(fileName);
         this.filePath = filePath;
 
@@ -72,7 +65,7 @@ final class CsvTablePanel extends Tab {
         setClosable(true);
 
         // Load CSV data
-        loadCsvFile();
+        loadCsvFile(skipRows);
     }
 
     private Node createCsvTable() {
@@ -132,7 +125,7 @@ final class CsvTablePanel extends Tab {
         return path != null && path.getFileName() != null ? path.getFileName().toString() : "未知文件";
     }
 
-    private void loadCsvFile() {
+    private void loadCsvFile(int skipRows) {
         // Detect encoding automatically
         Charset detectedCharset = detectCharset(filePath);
         charset = detectedCharset;
@@ -140,6 +133,11 @@ final class CsvTablePanel extends Tab {
 
         try {
             lines = Files.readAllLines(filePath, detectedCharset);
+
+            for (int i = 0; i < skipRows; i++) {
+                if (lines.isEmpty()) break;
+                lines.removeFirst();
+            }
 
             if (lines.isEmpty()) {
                 csvTable.getColumns().clear();

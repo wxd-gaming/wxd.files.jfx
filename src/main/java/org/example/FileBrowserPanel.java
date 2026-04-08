@@ -365,9 +365,8 @@ final class FileBrowserPanel extends VBox {
                 if (!tableRow.isEmpty()) {
                     // 有内容的地方显示选中文件的右键菜单
                     tableView.getSelectionModel().select(tableRow.getIndex());
-                    if (WindowsShellContextMenu.show(tableRow.getItem().path(), event.getScreenX(), event.getScreenY())) {
-                        event.consume();
-                    }
+                    event.consume();
+                    WindowsShellContextMenu.show(tableRow.getItem().path(), event.getScreenX(), event.getScreenY());
                 }
             });
 
@@ -398,29 +397,10 @@ final class FileBrowserPanel extends VBox {
         tableView.setRowFactory(view -> {
             TableRow<FileItem> row = new TableRow<>();
             row.getStyleClass().add("file-table-row");
-//            row.setOnMouseClicked(event -> {
-//                if (event.getClickCount() == 2 && !row.isEmpty()) {
-//                    FileItem item = row.getItem();
-//                    if (item.directory()) {
-//                        openPath(item.path());
-//                    } else {
-//                        openFileWithDefaultApp(item.path());
-//                    }
-//                }
-//            });
             row.addEventHandler(ContextMenuEvent.CONTEXT_MENU_REQUESTED, event -> {
-//                if (row.isEmpty()) {
-                    // 空白处显示当前目录的右键菜单
-                    if (WindowsShellContextMenu.show(panelBean.ofPath(), event.getScreenX(), event.getScreenY())) {
-                        event.consume();
-                    }
-                    return;
-//                }
-//                // 有内容的地方显示选中文件的右键菜单
-//                tableView.getSelectionModel().select(row.getIndex());
-//                if (WindowsShellContextMenu.show(row.getItem().path(), event.getScreenX(), event.getScreenY())) {
-//                    event.consume();
-//                }
+                // 空白处显示当前目录的右键菜单
+                event.consume();
+                WindowsShellContextMenu.show(panelBean.ofPath(), event.getScreenX(), event.getScreenY());
             });
             return row;
         });

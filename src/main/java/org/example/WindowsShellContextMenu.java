@@ -30,9 +30,9 @@ final class WindowsShellContextMenu {
     private WindowsShellContextMenu() {
     }
 
-    static boolean show(Path path, double screenX, double screenY) {
+    static void show(Path path, double screenX, double screenY) {
         if (!isWindows()) {
-            return false;
+            return;
         }
 
         WinNT.HRESULT coInitResult = Ole32.INSTANCE.CoInitializeEx(Pointer.NULL, Ole32.COINIT_APARTMENTTHREADED);
@@ -41,7 +41,7 @@ final class WindowsShellContextMenu {
         if (coInitCode != WinError.S_OK.intValue()
                 && coInitCode != WinError.S_FALSE.intValue()
                 && coInitCode != WinError.RPC_E_CHANGED_MODE) {
-            return false;
+            return;
         }
 
         Pointer absolutePidl = null;
@@ -62,7 +62,7 @@ final class WindowsShellContextMenu {
                     null
             );
             if (COMUtils.FAILED(parseResult)) {
-                return false;
+                return;
             }
             absolutePidl = pidlRef.getValue();
 
@@ -75,7 +75,7 @@ final class WindowsShellContextMenu {
                     childPidlRef
             );
             if (COMUtils.FAILED(bindResult)) {
-                return false;
+                return;
             }
 
             parentFolder = new IShellFolder(parentFolderRef.getValue());
@@ -90,7 +90,7 @@ final class WindowsShellContextMenu {
                     menuRef
             );
             if (COMUtils.FAILED(uiObjectResult)) {
-                return false;
+                return;
             }
             contextMenu = new IContextMenu(menuRef.getValue());
 
@@ -107,12 +107,12 @@ final class WindowsShellContextMenu {
 
             menu = User32Ext.INSTANCE.CreatePopupMenu();
             if (menu == null) {
-                return false;
+                return;
             }
 
             WinNT.HRESULT queryResult = contextMenu.queryContextMenu(menu, 0, 1, 0x7FFF, CMF_NORMAL);
             if (COMUtils.FAILED(queryResult)) {
-                return false;
+                return;
             }
 
             MenuHostWindow.installHandlers(contextMenu2, contextMenu3);
@@ -133,9 +133,8 @@ final class WindowsShellContextMenu {
                 invoke.nShow = 1;
                 invoke.write();
                 WinNT.HRESULT invokeResult = contextMenu.invokeCommand(invoke);
-                return COMUtils.SUCCEEDED(invokeResult);
+                COMUtils.SUCCEEDED(invokeResult);
             }
-            return true;
         } finally {
             MenuHostWindow.clearHandlers();
             if (menu != null) {

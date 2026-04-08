@@ -35,6 +35,7 @@ final class CsvMainPanel extends BorderPane {
     private long lastModifiedTime;
 
     // Store tabs to prevent duplicates
+    public final TextField skipField = new TextField();
     private final TextField filterField = new TextField();
     private SplitPane splitPane;
     private final javafx.collections.ObservableMap<String, CsvTablePanel> openTabs = javafx.collections.FXCollections.observableHashMap();
@@ -163,7 +164,7 @@ final class CsvMainPanel extends BorderPane {
 
         // Create new tab
         Path filePath = currentDirectory.resolve(fileName.replace("\\", "/"));
-        CsvTablePanel newTab = new CsvTablePanel(fileName, filePath);
+        CsvTablePanel newTab = new CsvTablePanel(fileName, filePath, Integer.parseInt(skipField.getText()));
 
         // Store tab reference
         openTabs.put(tabId, newTab);
@@ -192,12 +193,19 @@ final class CsvMainPanel extends BorderPane {
         filterField.getStyleClass().add("csv-filter-field");
         HBox.setHgrow(filterField, Priority.ALWAYS);
 
+        skipField.setPrefWidth(35);
+        skipField.setMaxWidth(35);
+        skipField.setPromptText("跳过的行数");
+        skipField.getStyleClass().add("csv-filter-field");
+        skipField.setText("1");
+        HBox.setHgrow(skipField, Priority.NEVER);
+
         filterField.textProperty().addListener((obs, oldVal, newVal) -> {
             List<String> list = fileList.getItems().stream().filter(file -> matchesFilter(file, newVal)).toList();
             fileList.setItems(FXCollections.observableArrayList(list));
         });
 
-        HBox filterBox = new HBox(0, filterField);
+        HBox filterBox = new HBox(0, skipField, filterField);
         filterBox.setPadding(new Insets(6, 0, 6, 0));
 
         VBox footer = new VBox(6, label, filterLabel, filterBox);
