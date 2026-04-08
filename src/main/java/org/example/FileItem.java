@@ -16,8 +16,12 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 record FileItem(Path path, String name, boolean directory, String type, String sizeText, String modifiedText) {
+
+    private static final Logger log = LoggerFactory.getLogger(FileItem.class);
 
     public static final Set<String> ARCHIVE_EXTENSIONS = Set.of("zip", "rar", "7z", "tar", "gz", "bz2", "xz");
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
@@ -32,6 +36,7 @@ record FileItem(Path path, String name, boolean directory, String type, String s
             String modifiedText = TIME_FORMATTER.format(Instant.ofEpochMilli(attributes.lastModifiedTime().toMillis()));
             return new FileItem(path, name, directory, type, sizeText, modifiedText);
         } catch (IOException exception) {
+            log.error("获取文件属性失败: {}", path, exception);
             String name = path.getFileName() == null ? path.toString() : path.getFileName().toString();
             return new FileItem(path, name, Files.isDirectory(path), "未知", "-", "-");
         }

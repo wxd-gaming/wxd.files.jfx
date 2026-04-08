@@ -5,7 +5,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 final class AppStateStore {
 
     static final Path emptyPath = Path.of("");
@@ -61,7 +63,7 @@ final class AppStateStore {
                 try {
                     panelBean = new PanelBean(value);
                 } catch (Exception e) {
-
+                    log.error("加载面板配置失败: {}", value, e);
                 }
             }
             panelBean.index = index;

@@ -11,7 +11,9 @@ import javafx.scene.text.Font;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 final class MainPanel extends BorderPane {
 
     enum LayoutMode {
@@ -26,6 +28,7 @@ final class MainPanel extends BorderPane {
             try {
                 return LayoutMode.valueOf(value);
             } catch (IllegalArgumentException exception) {
+                log.error("无效的布局模式: {}", value, exception);
                 return MIXED;
             }
         }

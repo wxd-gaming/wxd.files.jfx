@@ -19,6 +19,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+@Slf4j
 final class FileBrowserPanel extends VBox {
 
     private static final String STYLESHEET = Objects.requireNonNull(
@@ -210,6 +212,7 @@ final class FileBrowserPanel extends VBox {
                 refresh(); // 刷新视图以反映更改
             }
         } catch (UnsupportedFlavorException | IOException e) {
+            log.error("粘贴失败", e);
             MainApplication.showError("粘贴失败", "无法从剪切板粘贴: " + e.getMessage());
         }
     }
@@ -438,6 +441,7 @@ final class FileBrowserPanel extends VBox {
         try {
             lastModifiedTime = Files.getLastModifiedTime(panelBean.ofPath()).toMillis();
         } catch (IOException e) {
+            log.error("获取修改时间失败: {}", panelBean.ofPath(), e);
             lastModifiedTime = 0;
         }
         try (Stream<Path> pathStream = Files.list(panelBean.ofPath())) {
@@ -450,6 +454,7 @@ final class FileBrowserPanel extends VBox {
                     .toList());
             applyFilter();
         } catch (IOException exception) {
+            log.error("无法读取目录: {}", panelBean.path, exception);
             MainApplication.showError("无法读取目录", panelBean.path + System.lineSeparator() + exception.getMessage());
             allItems.clear();
             applyFilter();
@@ -522,6 +527,7 @@ final class FileBrowserPanel extends VBox {
         try {
             openPath(Paths.get(pathField.getText().trim()));
         } catch (InvalidPathException exception) {
+            log.error("路径格式错误: {}", pathField.getText(), exception);
             MainApplication.showError("路径格式错误", exception.getInput());
         }
     }
@@ -543,6 +549,7 @@ final class FileBrowserPanel extends VBox {
             }
             pb.start();
         } catch (IOException exception) {
+            log.error("打开系统管理器失败: {}", path, exception);
             MainApplication.showError("打开失败", "无法在系统文件管理器中打开: " + path);
         }
     }
@@ -568,6 +575,7 @@ final class FileBrowserPanel extends VBox {
             }
             pb.start();
         } catch (IOException exception) {
+            log.error("打开文件失败: {}", path, exception);
             MainApplication.showError("打开失败", "无法打开文件: " + path);
         }
     }
@@ -661,6 +669,7 @@ final class FileBrowserPanel extends VBox {
             }
         } catch (IOException e) {
             // Ignore errors during auto-refresh
+            log.error("自动刷新失败: {}", panelBean.path, e);
         }
     }
 
@@ -696,6 +705,7 @@ final class FileBrowserPanel extends VBox {
                 Files.move(oldPath, newPath, StandardCopyOption.REPLACE_EXISTING);
                 refresh();  // 刷新视图
             } catch (IOException e) {
+                log.error("重命名失败: {} -> {}", oldPath, newPath, e);
                 MainApplication.showError("重命名失败", "无法重命名文件: " + e.getMessage());
             }
         }

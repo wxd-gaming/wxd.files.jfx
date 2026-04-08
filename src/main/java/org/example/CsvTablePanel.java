@@ -10,6 +10,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -23,6 +24,7 @@ import java.util.Objects;
 /**
  * CSV Table Panel - A tab component for displaying and editing CSV files
  */
+@Slf4j
 final class CsvTablePanel extends Tab {
 
     private final TableView<List<String>> csvTable = new TableView<>();
@@ -179,6 +181,7 @@ final class CsvTablePanel extends Tab {
             applyFilters();
 
         } catch (IOException e) {
+            log.error("读取 CSV 文件失败: {}", filePath, e);
             MainApplication.showError("读取 CSV 文件失败", e.getMessage());
         }
     }
@@ -315,11 +318,13 @@ final class CsvTablePanel extends Tab {
                         return StandardCharsets.UTF_8;
                     }
                 } catch (Exception utf8Exception) {
+                    log.error("UTF-8 解码失败，尝试 GBK: {}", filePath);
                     // UTF-8 failed, try GBK
                     try {
                         new String(buffer, 0, bytesRead, Charset.forName("GBK"));
                         return Charset.forName("GBK");
                     } catch (Exception gbkException) {
+                        log.error("GBK 解码也失败: {}", filePath);
                         return StandardCharsets.UTF_8;
                     }
                 }
@@ -332,11 +337,13 @@ final class CsvTablePanel extends Tab {
                     }
                 } catch (Exception e) {
                     // GBK failed, fall back to UTF-8
+                    log.error("GBK 解码失败: {}", filePath);
                 }
 
                 return StandardCharsets.UTF_8;
             }
         } catch (IOException e) {
+            log.error("探测字符集失败: {}", filePath, e);
             return StandardCharsets.UTF_8;
         }
     }
@@ -489,6 +496,7 @@ final class CsvTablePanel extends Tab {
             MainApplication.showInfo("保存成功", "CSV文件已保存到: " + filePath);
 
         } catch (IOException e) {
+            log.error("保存 CSV 文件失败: {}", filePath, e);
             MainApplication.showError("保存失败", "无法保存CSV文件: " + e.getMessage());
         }
     }

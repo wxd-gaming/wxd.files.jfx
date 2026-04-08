@@ -12,6 +12,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -24,6 +25,7 @@ import java.util.Objects;
 /**
  * CSV Main Panel - Main interface for CSV viewer with file list and tabbed CSV display
  */
+@Slf4j
 final class CsvMainPanel extends BorderPane {
 
     private final ListView<String> fileList = new ListView<>();
@@ -91,6 +93,7 @@ final class CsvMainPanel extends BorderPane {
             csvFiles.sort(String::compareTo);
             return csvFiles;
         } catch (IOException e) {
+            log.error("在后台加载文件失败: {}", currentDirectory, e);
             throw new RuntimeException(e);
         }
     }
@@ -231,6 +234,7 @@ final class CsvMainPanel extends BorderPane {
             });
         });
         loadFilesTask.setOnFailed(event -> {
+            log.error("加载文件失败", loadFilesTask.getException());
             MainApplication.showError("加载文件失败", loadFilesTask.getException().getMessage());
             setCenter(splitPane);
         });
@@ -246,6 +250,7 @@ final class CsvMainPanel extends BorderPane {
             }
         } catch (IOException e) {
             // Ignore errors during auto-refresh
+            log.error("自动刷新失败: {}", currentDirectory, e);
         }
     }
 

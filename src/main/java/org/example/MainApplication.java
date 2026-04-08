@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -14,10 +15,12 @@ import java.util.List;
  * @author wxd-gaming(無心道, 15388152619)
  * @version 2026-03-28 14:16
  **/
+@Slf4j
 public class MainApplication extends Application {
 
     @Override
     public void start(Stage stage) {
+        log.info("Starting MainApplication...");
         MainPanel mainPanel = new MainPanel(resolveRequestedSplitCount(getParameters().getRaw()));
         Scene scene = new Scene(mainPanel, 1280, 820);
         stage.setTitle("無心道 分屏 文件管理器");
