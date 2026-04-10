@@ -26,6 +26,7 @@ public class MainApplication extends Application {
         stage.setTitle("無心道 分屏 文件管理器");
         stage.setScene(scene);
         stage.getIcons().add(new Image("/app.png"));
+        stage.setMaximized(true);
         stage.show();
     }
 

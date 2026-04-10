@@ -297,7 +297,11 @@ final class FileBrowserPanel extends VBox {
         styleActionButton(csvViewerButton);
         csvViewerButton.setOnAction(event -> openCsvViewer());
 
-        return new HBox(6, filterField, openInExplorerButton, csvViewerButton);
+        Button xlsViewerButton = new Button("Xls 查看");
+        styleActionButton(xlsViewerButton);
+        xlsViewerButton.setOnAction(event -> openXlsViewer());
+
+        return new HBox(6, filterField, openInExplorerButton, csvViewerButton, xlsViewerButton);
     }
 
     private Node createTable() {
@@ -586,6 +590,18 @@ final class FileBrowserPanel extends VBox {
         stage.setTitle("CSV 文件查看器 - " + panelBean.path);
         stage.setScene(new javafx.scene.Scene(csvViewer, 1000, 700));
         stage.getIcons().add(new Image("/app.png"));
+        stage.setMaximized(true);
+        stage.show();
+    }
+
+    //打开excel阅读器
+    private void openXlsViewer() {
+        CsvViewerPanel csvViewer = new CsvViewerPanel(panelBean.ofPath());
+        javafx.stage.Stage stage = new javafx.stage.Stage();
+        stage.setTitle("Xls 文件查看器 - " + panelBean.path);
+        stage.setScene(new javafx.scene.Scene(csvViewer, 1000, 700));
+        stage.getIcons().add(new Image("/app.png"));
+        stage.setMaximized(true);
         stage.show();
     }
 

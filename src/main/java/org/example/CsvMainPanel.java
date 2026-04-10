@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * CSV Main Panel - Main interface for CSV viewer with file list and tabbed CSV display
@@ -28,6 +29,7 @@ import java.util.Objects;
 @Slf4j
 final class CsvMainPanel extends BorderPane {
 
+    private final AtomicReference<List<String>> csvFilesReference = new AtomicReference<>();
     private final ListView<String> fileList = new ListView<>();
     private final TabPane csvTabPane = new TabPane();
     private Path currentDirectory;
@@ -204,7 +206,7 @@ final class CsvMainPanel extends BorderPane {
         HBox.setHgrow(skipField, Priority.NEVER);
 
         filterField.textProperty().addListener((obs, oldVal, newVal) -> {
-            List<String> list = fileList.getItems().stream().filter(file -> matchesFilter(file, newVal)).toList();
+            List<String> list = csvFilesReference.get().stream().filter(file -> matchesFilter(file, newVal)).toList();
             fileList.setItems(FXCollections.observableArrayList(list));
         });
 
@@ -227,9 +229,9 @@ final class CsvMainPanel extends BorderPane {
             }
         };
         loadFilesTask.setOnSucceeded(event -> {
-            List<String> csvFiles = loadFilesTask.getValue();
+            csvFilesReference.set(loadFilesTask.getValue());
             Platform.runLater(() -> {
-                fileList.setItems(FXCollections.observableArrayList(csvFiles));
+                fileList.setItems(FXCollections.observableArrayList(csvFilesReference.get()));
                 setCenter(splitPane);
             });
         });
