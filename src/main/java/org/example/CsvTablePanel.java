@@ -1,11 +1,15 @@
 package org.example;
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -27,7 +31,12 @@ import java.util.Objects;
 @Slf4j
 final class CsvTablePanel extends Tab {
 
-    private final TableView<List<String>> csvTable = new TableView<>();
+    private final TableView<List<String>> scrollableTable = new TableView<>();
+    private final TableView<List<String>> fixedTable = new TableView<>();
+    private final ComboBox<Integer> fixedRowSelector = new ComboBox<>();
+    private final CheckBox showHeaderCheckBox = new CheckBox("显示表头");
+    private final VBox tableContainer = new VBox();
+    private int fixedRowCount = 2;
 
     // CSV data storage for filtering
     private String[] originalHeaders;
@@ -59,7 +68,7 @@ final class CsvTablePanel extends Tab {
             tabContent.getStylesheets().add(STYLESHEET);
         }
 
-        tabContent.setCenter(createCsvTable());
+        tabContent.setCenter(createMainContent());
         tabContent.setBottom(createTableFooter());
         tabContent.getStyleClass().add("csv-table-panel");
 
@@ -70,13 +79,24 @@ final class CsvTablePanel extends Tab {
         loadCsvFile(skipRows);
     }
 
-    private Node createCsvTable() {
-        csvTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
-        csvTable.setPlaceholder(new Label("没有数据"));
-        csvTable.setEditable(true);
-        csvTable.getStyleClass().add("csv-table");
+    private Node createMainContent() {
+        tableContainer.setSpacing(0);
+        VBox.setVgrow(scrollableTable, Priority.ALWAYS);
 
-        return csvTable;
+        // Configure tables
+        fixedTable.setMinHeight(0);
+        fixedTable.setPrefHeight(0);
+        fixedTable.getStyleClass().addAll("csv-table", "fixed-table");
+        fixedTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        fixedTable.setPlaceholder(new Label(""));
+
+        scrollableTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        scrollableTable.setPlaceholder(new Label("没有数据"));
+        scrollableTable.setEditable(true);
+        scrollableTable.getStyleClass().add("csv-table");
+
+        tableContainer.getChildren().addAll(fixedTable, scrollableTable);
+        return tableContainer;
     }
 
     private VBox createTableFooter() {
@@ -113,8 +133,34 @@ final class CsvTablePanel extends Tab {
 
         contentFilterField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
+        // Fixed row selector
+        Label fixedLabel = new Label("📌 固定行");
+        fixedLabel.getStyleClass().add("csv-footer-sublabel");
+        fixedLabel.setPadding(new Insets(6, 4, 6, 10));
+
+        fixedRowSelector.setItems(FXCollections.observableArrayList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+        fixedRowSelector.setValue(2);
+        fixedRowSelector.setOnAction(event -> {
+            fixedRowCount = fixedRowSelector.getValue();
+            applyFilters();
+        });
+
+        // Show header checkbox
+        showHeaderCheckBox.setSelected(true);
+        showHeaderCheckBox.getStyleClass().add("csv-footer-sublabel");
+        showHeaderCheckBox.setPadding(new Insets(6, 10, 6, 10));
+        showHeaderCheckBox.setOnAction(event -> {
+            if (showHeaderCheckBox.isSelected()) {
+                scrollableTable.getStyleClass().remove("hide-header");
+            } else {
+                if (!scrollableTable.getStyleClass().contains("hide-header")) {
+                    scrollableTable.getStyleClass().add("hide-header");
+                }
+            }
+        });
+
         // Create filter row with all elements
-        HBox filterRow = new HBox(6, saveButton, headerLabel, headerFilterField, contentLabel, contentFilterField);
+        HBox filterRow = new HBox(6, saveButton, headerLabel, headerFilterField, contentLabel, contentFilterField, fixedLabel, fixedRowSelector, showHeaderCheckBox);
         filterRow.setAlignment(Pos.CENTER_LEFT);
 
         VBox footer = new VBox(6, label, filterRow);
@@ -136,19 +182,24 @@ final class CsvTablePanel extends Tab {
         try {
             lines = Files.readAllLines(filePath, detectedCharset);
 
-            for (int i = 0; i < skipRows; i++) {
-                if (lines.isEmpty()) break;
-                lines.removeFirst();
-            }
-
             if (lines.isEmpty()) {
-                csvTable.getColumns().clear();
-                csvTable.getItems().clear();
+                scrollableTable.getColumns().clear();
+                scrollableTable.getItems().clear();
+                fixedTable.getColumns().clear();
+                fixedTable.getItems().clear();
                 return;
             }
 
-            // Parse header
-            originalHeaders = parseCsvLine(lines.get(0));
+            // Parse first line to determine column count
+            String[] firstLineValues = parseCsvLine(lines.get(0));
+            int columnCount = firstLineValues.length;
+
+            // Use generic headers: 列 1, 列 2, ...
+            originalHeaders = new String[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                originalHeaders[i] = "列 " + (i + 1);
+            }
+
             allColumns = new ArrayList<>();
             for (int i = 0; i < originalHeaders.length; i++) {
                 final int colIndex = i;
@@ -168,11 +219,14 @@ final class CsvTablePanel extends Tab {
                 allColumns.add(column);
             }
 
-            // Parse data rows
+            // Parse data rows - treat ALL lines as data including the first one
             originalData = new ArrayList<>();
-            for (int i = 1; i < lines.size(); i++) {
+            for (int i = 0; i < lines.size(); i++) {
                 String[] values = parseCsvLine(lines.get(i));
-                originalData.add(new ArrayList<>(List.of(values)));
+                List<String> row = new ArrayList<>(List.of(values));
+                // Add original row index at the end of the list (1-based)
+                row.add(String.valueOf(i + 1));
+                originalData.add(row);
             }
 
             // Clear filter fields and apply
@@ -186,8 +240,22 @@ final class CsvTablePanel extends Tab {
         }
     }
 
+    private TableColumn<List<String>, String> createRowNoColumn() {
+        TableColumn<List<String>, String> rowNoCol = new TableColumn<>("#");
+        rowNoCol.setCellValueFactory(data -> {
+            List<String> row = data.getValue();
+            String rowNo = row.get(row.size() - 1);
+            return new SimpleStringProperty(rowNo);
+        });
+        rowNoCol.setPrefWidth(50);
+        rowNoCol.setMinWidth(50);
+        rowNoCol.setEditable(false);
+        rowNoCol.getStyleClass().add("csv-row-no-column");
+        return rowNoCol;
+    }
+
     private TableCell<List<String>, String> createEditableCell(int colIndex) {
-        return new TableCell<>() {
+        TableCell<List<String>, String> cell = new TableCell<>() {
             private final TextField textField = new TextField();
 
             @Override
@@ -219,6 +287,9 @@ final class CsvTablePanel extends Tab {
                         // Let CSS handle text fill
                         setStyle("");
                     }
+                }
+                if (!getStyleClass().contains("csv-table-cell")) {
+                    getStyleClass().add("csv-table-cell");
                 }
             }
 
@@ -258,7 +329,7 @@ final class CsvTablePanel extends Tab {
                 List<String> row = getTableRow().getItem();
                 if (row != null) {
                     int rowIndex = getIndex();
-                    if (rowIndex >= 0 && rowIndex < csvTable.getItems().size()) {
+                    if (rowIndex >= 0 && rowIndex < scrollableTable.getItems().size()) {
                         if (colIndex < row.size()) {
                             List<String> newRow = new ArrayList<>(row);
                             while (newRow.size() <= colIndex) {
@@ -285,6 +356,23 @@ final class CsvTablePanel extends Tab {
                 setGraphic(null);
             }
         };
+
+        // Add context menu for copying
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem copyItem = new MenuItem("复制");
+        copyItem.setOnAction(e -> {
+            String text = cell.getText();
+            if (text != null && !text.isEmpty()) {
+                Clipboard clipboard = Clipboard.getSystemClipboard();
+                ClipboardContent content = new ClipboardContent();
+                content.putString(text);
+                clipboard.setContent(content);
+            }
+        });
+        contextMenu.getItems().add(copyItem);
+        cell.setContextMenu(contextMenu);
+
+        return cell;
     }
 
     private int findOriginalRowIndex(List<String> row) {
@@ -386,38 +474,187 @@ final class CsvTablePanel extends Tab {
         String headerFilterText = headerFilterField.getText().trim();
         String contentFilterText = contentFilterField.getText().trim();
 
-        // Step 1: Filter columns based on header filter, but always show first column
-        List<Integer> visibleColumnIndices = new ArrayList<>();
+        // Separate original data into fixed part and filterable part
+        List<List<String>> fixedRows = new ArrayList<>();
+        List<List<String>> filterableRows = new ArrayList<>();
 
-        if (originalHeaders.length > 0) {
-            visibleColumnIndices.add(0);
+        for (int i = 0; i < originalData.size(); i++) {
+            if (i < fixedRowCount) {
+                fixedRows.add(originalData.get(i));
+            } else {
+                filterableRows.add(originalData.get(i));
+            }
         }
 
-        for (int i = 1; i < originalHeaders.length; i++) {
-            if (headerFilterText.isEmpty() || matchesFilter(originalHeaders[i], headerFilterText)) {
+        // Step 1: Filter columns based on header filter
+        List<Integer> visibleColumnIndices = new ArrayList<>();
+
+        for (int i = 0; i < originalHeaders.length; i++) {
+            boolean matches = i == 0 || headerFilterText.isEmpty() || matchesFilter(originalHeaders[i], headerFilterText);
+
+            // If not matched by header, but we have fixed rows, check them as well
+            if (!matches && fixedRowCount > 0 && !headerFilterText.isEmpty()) {
+                for (List<String> row : fixedRows) {
+                    if (i < row.size() - 1 && matchesFilter(row.get(i), headerFilterText)) {
+                        matches = true;
+                        break;
+                    }
+                }
+            }
+
+            if (matches) {
                 visibleColumnIndices.add(i);
             }
         }
 
-        // Update visible columns
-        csvTable.getColumns().clear();
+        // Update visible columns for both tables
+        List<TableColumn<List<String>, ?>> newFixedCols = new ArrayList<>();
+        List<TableColumn<List<String>, ?>> newScrollCols = new ArrayList<>();
+
+        // Add Row Number column first
+        TableColumn<List<String>, String> fixedRowNoCol = createRowNoColumn();
+        TableColumn<List<String>, String> scrollRowNoCol = createRowNoColumn();
+        newFixedCols.add(fixedRowNoCol);
+        newScrollCols.add(scrollRowNoCol);
+
         for (int colIndex : visibleColumnIndices) {
-            csvTable.getColumns().add(allColumns.get(colIndex));
+            TableColumn<List<String>, String> scrollCol = allColumns.get(colIndex);
+
+            // Create a sync column for fixed table
+            TableColumn<List<String>, String> fixedCol = new TableColumn<>(scrollCol.getText());
+            fixedCol.setCellValueFactory(scrollCol.getCellValueFactory());
+            fixedCol.setMinWidth(scrollCol.getMinWidth());
+            fixedCol.setPrefWidth(scrollCol.getPrefWidth());
+
+            // Sync widths
+            fixedCol.widthProperty().addListener((obs, oldVal, newVal) -> scrollCol.setPrefWidth(newVal.doubleValue()));
+            scrollCol.widthProperty().addListener((obs, oldVal, newVal) -> fixedCol.setPrefWidth(newVal.doubleValue()));
+
+            newFixedCols.add(fixedCol);
+            newScrollCols.add(scrollCol);
         }
 
-        // Step 2: Filter rows based on content filter
+        fixedTable.getColumns().setAll(newFixedCols);
+        scrollableTable.getColumns().setAll(newScrollCols);
+
+        // Step 2: Filter rows based on content filter (only filter non-fixed rows)
         List<List<String>> filteredData = new ArrayList<>();
         if (contentFilterText.isEmpty()) {
-            filteredData = originalData;
+            filteredData.addAll(filterableRows);
         } else {
-            for (List<String> row : originalData) {
+            for (List<String> row : filterableRows) {
                 if (matchesContentFilter(row, visibleColumnIndices, contentFilterText)) {
                     filteredData.add(row);
                 }
             }
         }
 
-        csvTable.setItems(FXCollections.observableArrayList(filteredData));
+        // Final data lists
+        List<List<String>> fixedDataList = fixedRows;
+        List<List<String>> scrollDataList = filteredData;
+
+        fixedTable.setItems(FXCollections.observableArrayList(fixedDataList));
+        scrollableTable.setItems(FXCollections.observableArrayList(scrollDataList));
+
+        // Sync horizontal scrolling
+        syncHorizontalScrollingOnce();
+
+        // Adjust fixedTable height
+        if (fixedRowCount > 0 && !fixedDataList.isEmpty()) {
+            fixedTable.setManaged(true);
+            fixedTable.setVisible(true);
+
+            // 使用 Platform.runLater 确保在表格渲染后计算高度
+            Platform.runLater(() -> {
+                double totalHeight = 0;
+                // 获取表头高度
+                Node header = fixedTable.lookup(".column-header-background");
+                if (header != null) {
+                    totalHeight += header.getBoundsInLocal().getHeight();
+                } else {
+                    totalHeight += 46; // 回退值
+                }
+
+                // 获取所有可见行并累加高度
+                int rows = fixedTable.getItems().size();
+                if (rows > 0) {
+                    // 由于 TableView 是虚拟化的，我们取第一行的高度作为基准
+                    Node rowNode = fixedTable.lookup(".table-row-cell");
+                    if (rowNode != null) {
+                        double singleRowHeight = rowNode.getBoundsInLocal().getHeight();
+                        totalHeight += singleRowHeight * rows;
+                    } else {
+                        totalHeight += 38 * rows; // 回退值
+                    }
+                }
+
+                totalHeight += 2; // 微量缓冲区确保边框显示
+
+                if (totalHeight > 220) {
+                    totalHeight = 220;
+                    if (!fixedTable.getStyleClass().contains("show-vertical-scrollbar")) {
+                        fixedTable.getStyleClass().add("show-vertical-scrollbar");
+                    }
+                } else {
+                    fixedTable.getStyleClass().remove("show-vertical-scrollbar");
+                }
+
+                fixedTable.setPrefHeight(totalHeight);
+                fixedTable.setMinHeight(totalHeight);
+                fixedTable.setMaxHeight(totalHeight);
+            });
+
+            // Hide header of scrollableTable when fixedTable is visible
+            if (!scrollableTable.getStyleClass().contains("hide-header")) {
+                scrollableTable.getStyleClass().add("hide-header");
+            }
+        } else {
+            fixedTable.getStyleClass().remove("show-vertical-scrollbar");
+            fixedTable.setManaged(false);
+            fixedTable.setVisible(false);
+            fixedTable.setPrefHeight(0);
+            fixedTable.setMinHeight(0);
+
+            if (showHeaderCheckBox.isSelected()) {
+                scrollableTable.getStyleClass().remove("hide-header");
+            }
+        }
+
+    }
+
+    private ScrollBar cachedFixedHBar;
+    private ScrollBar cachedScrollHBar;
+
+    private void syncHorizontalScrollingOnce() {
+        if (cachedFixedHBar == null) {
+            cachedFixedHBar = findScrollBar(fixedTable, Orientation.HORIZONTAL);
+        }
+        if (cachedScrollHBar == null) {
+            cachedScrollHBar = findScrollBar(scrollableTable, Orientation.HORIZONTAL);
+        }
+
+        if (cachedFixedHBar != null && cachedScrollHBar != null) {
+            // Unbind first to avoid multiple bindings
+            cachedFixedHBar.valueProperty().unbindBidirectional(cachedScrollHBar.valueProperty());
+            cachedFixedHBar.valueProperty().bindBidirectional(cachedScrollHBar.valueProperty());
+
+            // Optional: hide the fixed horizontal bar more aggressively
+            cachedFixedHBar.setMaxHeight(0);
+            cachedFixedHBar.setMinHeight(0);
+            cachedFixedHBar.setPrefHeight(0);
+            cachedFixedHBar.setOpacity(0);
+            cachedFixedHBar.setVisible(false);
+            cachedFixedHBar.setManaged(false);
+        }
+    }
+
+    private ScrollBar findScrollBar(Node node, Orientation orientation) {
+        for (Node n : node.lookupAll(".scroll-bar")) {
+            if (n instanceof ScrollBar bar && bar.getOrientation() == orientation) {
+                return bar;
+            }
+        }
+        return null;
     }
 
     private boolean matchesFilter(String text, String filterText) {

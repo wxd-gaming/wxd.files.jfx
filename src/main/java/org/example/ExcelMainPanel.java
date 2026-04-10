@@ -17,40 +17,30 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * CSV Main Panel - Main interface for CSV viewer with file list and tabbed CSV display
- */
 @Slf4j
-final class CsvMainPanel extends BorderPane {
+final class ExcelMainPanel extends BorderPane {
 
-    private final AtomicReference<List<String>> csvFilesReference = new AtomicReference<>();
+    private final Path currentDirectory;
     private final ListView<String> fileList = new ListView<>();
-    private final TabPane csvTabPane = new TabPane();
-    private Path currentDirectory;
-
-    // Auto refresh
-    private final Timeline autoRefreshTimeline;
-    private long lastModifiedTime;
-
-    // Store tabs to prevent duplicates
+    private final TabPane excelTabPane = new TabPane();
+    private final Map<String, ExcelTablePanel> openTabs = new ConcurrentHashMap<>();
     private final TextField filterField = new TextField();
-    private SplitPane splitPane;
-    private final javafx.collections.ObservableMap<String, CsvTablePanel> openTabs = javafx.collections.FXCollections.observableHashMap();
-
     private final ProgressIndicator progressIndicator = new ProgressIndicator();
+    private final AtomicReference<List<String>> excelFilesReference = new AtomicReference<>(new ArrayList<>());
+    private SplitPane splitPane;
+    private long lastModifiedTime = 0;
+    private final Timeline autoRefreshTimeline;
 
     private static final String STYLESHEET = Objects.requireNonNull(
             CsvMainPanel.class.getResource("/org/example/csv-viewer.css"),
             "Missing stylesheet: /org/example/csv-viewer.css"
     ).toExternalForm();
 
-    CsvMainPanel(Path directory) {
+    ExcelMainPanel(Path directory) {
         this.currentDirectory = directory;
 
         // Load stylesheet
@@ -70,16 +60,17 @@ final class CsvMainPanel extends BorderPane {
     private List<String> loadFilesInBackground() {
         try {
             lastModifiedTime = Files.getLastModifiedTime(currentDirectory).toMillis();
-            List<String> csvFiles = new ArrayList<>();
+            List<String> excelFiles = new ArrayList<>();
             String filterText = filterField.getText();
             Files.walkFileTree(currentDirectory, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
                     new SimpleFileVisitor<>() {
                         @Override
                         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                            if (file.toString().toLowerCase().endsWith(".csv")) {
+                            String fileNameLower = file.toString().toLowerCase();
+                            if (fileNameLower.endsWith(".xls") || fileNameLower.endsWith(".xlsx")) {
                                 String fileName = currentDirectory.relativize(file).toString();
                                 if (matchesFilter(fileName, filterText)) {
-                                    csvFiles.add(fileName);
+                                    excelFiles.add(fileName);
                                 }
                             }
                             return FileVisitResult.CONTINUE;
@@ -87,12 +78,11 @@ final class CsvMainPanel extends BorderPane {
 
                         @Override
                         public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                            // Ignore access denied errors and continue
                             return FileVisitResult.CONTINUE;
                         }
                     });
-            csvFiles.sort(String::compareTo);
-            return csvFiles;
+            excelFiles.sort(String::compareTo);
+            return excelFiles;
         } catch (IOException e) {
             log.error("在后台加载文件失败: {}", currentDirectory, e);
             throw new RuntimeException(e);
@@ -101,9 +91,8 @@ final class CsvMainPanel extends BorderPane {
 
     private void setupUI() {
         setPadding(new Insets(4));
-        getStyleClass().add("csv-viewer-pane");
+        getStyleClass().add("csv-viewer-pane"); // Reuse CSS
 
-        // Left panel with file list
         BorderPane leftPanel = new BorderPane();
         leftPanel.setCenter(fileList);
         leftPanel.setBottom(createFileListFooter());
@@ -112,18 +101,15 @@ final class CsvMainPanel extends BorderPane {
         leftPanel.setMaxWidth(450);
         leftPanel.getStyleClass().add("csv-left-panel");
 
-        // Style file list
         fileList.getStyleClass().add("csv-file-list");
         fileList.setCellFactory(listView -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-
                 if (empty || item == null) {
                     setText(null);
                     getStyleClass().clear();
                 } else {
-                    // Clean and apply style classes
                     getStyleClass().clear();
                     getStyleClass().add("csv-file-list-cell");
                     setText(item);
@@ -131,17 +117,15 @@ final class CsvMainPanel extends BorderPane {
             }
         });
 
-        // Right panel with TabPane
         BorderPane rightPanel = new BorderPane();
-        csvTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
-        csvTabPane.getStyleClass().add("csv-tab-pane");
-        csvTabPane.setTabMinHeight(35);
-        csvTabPane.setTabMaxHeight(35);
+        excelTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
+        excelTabPane.getStyleClass().add("csv-tab-pane");
+        excelTabPane.setTabMinHeight(35);
+        excelTabPane.setTabMaxHeight(35);
 
-        rightPanel.setCenter(csvTabPane);
+        rightPanel.setCenter(excelTabPane);
         rightPanel.getStyleClass().add("csv-right-panel");
 
-        // Split pane
         splitPane = new SplitPane(leftPanel, rightPanel);
         splitPane.setDividerPositions(0.2);
         splitPane.getStyleClass().add("csv-split-pane");
@@ -149,38 +133,27 @@ final class CsvMainPanel extends BorderPane {
 
         setCenter(splitPane);
 
-        // Event handlers
         fileList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                openCsvInTab(newVal);
+                openExcelInTab(newVal);
             }
         });
     }
 
-    private void openCsvInTab(String fileName) {
+    private void openExcelInTab(String fileName) {
         String tabId = fileName;
-
-        // Check if tab already exists
         if (openTabs.containsKey(tabId)) {
-            csvTabPane.getSelectionModel().select(openTabs.get(tabId));
+            excelTabPane.getSelectionModel().select(openTabs.get(tabId));
             return;
         }
 
-        // Create new tab
         Path filePath = currentDirectory.resolve(fileName.replace("\\", "/"));
-        CsvTablePanel newTab = new CsvTablePanel(fileName, filePath, 1);
+        ExcelTablePanel newTab = new ExcelTablePanel(fileName, filePath);
 
-        // Store tab reference
         openTabs.put(tabId, newTab);
-
-        // Add close handler
         newTab.setOnClosed(event -> openTabs.remove(tabId));
-
-        // Add tab to tab pane
-        csvTabPane.getTabs().add(newTab);
-
-        // Switch to new tab
-        csvTabPane.getSelectionModel().select(newTab);
+        excelTabPane.getTabs().add(newTab);
+        excelTabPane.getSelectionModel().select(newTab);
     }
 
     private VBox createFileListFooter() {
@@ -192,13 +165,12 @@ final class CsvMainPanel extends BorderPane {
         filterLabel.getStyleClass().add("csv-footer-sublabel");
         filterLabel.setPadding(new Insets(2, 0, 2, 0));
 
-
         filterField.setPromptText("例如: data||test 或 report&&2024");
         filterField.getStyleClass().add("csv-filter-field");
         HBox.setHgrow(filterField, Priority.ALWAYS);
 
         filterField.textProperty().addListener((obs, oldVal, newVal) -> {
-            List<String> list = csvFilesReference.get().stream().filter(file -> matchesFilter(file, newVal)).toList();
+            List<String> list = excelFilesReference.get().stream().filter(file -> matchesFilter(file, newVal)).toList();
             fileList.setItems(FXCollections.observableArrayList(list));
         });
 
@@ -213,7 +185,6 @@ final class CsvMainPanel extends BorderPane {
 
     private void loadFiles() {
         setCenter(progressIndicator);
-        // Start loading files in a background thread
         Task<List<String>> loadFilesTask = new Task<>() {
             @Override
             protected List<String> call() throws Exception {
@@ -221,15 +192,14 @@ final class CsvMainPanel extends BorderPane {
             }
         };
         loadFilesTask.setOnSucceeded(event -> {
-            csvFilesReference.set(loadFilesTask.getValue());
+            excelFilesReference.set(loadFilesTask.getValue());
             Platform.runLater(() -> {
-                fileList.setItems(FXCollections.observableArrayList(csvFilesReference.get()));
+                fileList.setItems(FXCollections.observableArrayList(excelFilesReference.get()));
                 setCenter(splitPane);
             });
         });
         loadFilesTask.setOnFailed(event -> {
             log.error("加载文件失败", loadFilesTask.getException());
-            MainApplication.showError("加载文件失败", loadFilesTask.getException().getMessage());
             setCenter(splitPane);
         });
 
@@ -243,7 +213,6 @@ final class CsvMainPanel extends BorderPane {
                 loadFiles();
             }
         } catch (IOException e) {
-            // Ignore errors during auto-refresh
             log.error("自动刷新失败: {}", currentDirectory, e);
         }
     }
@@ -252,38 +221,23 @@ final class CsvMainPanel extends BorderPane {
         if (filterText == null || filterText.isEmpty()) {
             return true;
         }
-
         String lowerText = text.toLowerCase();
         String lowerFilter = filterText.toLowerCase();
 
-        // Check for && (AND) operator
-        if (lowerFilter.contains("&&")) {
+        if (lowerFilter.contains("||")) {
             String[] parts = lowerFilter.split("\\|\\|");
             for (String part : parts) {
-                String[] andParts = part.split("&&");
-                boolean allMatch = true;
-                for (String andPart : andParts) {
-                    if (!lowerText.contains(andPart.trim())) {
-                        allMatch = false;
-                        break;
-                    }
-                }
-                if (allMatch) {
-                    return true;
-                }
+                if (matchesFilter(text, part.trim())) return true;
             }
             return false;
         }
 
-        // Check for || (OR) operator
-        if (lowerFilter.contains("||")) {
-            String[] parts = lowerFilter.split("\\|\\|");
+        if (lowerFilter.contains("&&")) {
+            String[] parts = lowerFilter.split("&&");
             for (String part : parts) {
-                if (lowerText.contains(part.trim())) {
-                    return true;
-                }
+                if (!matchesFilter(text, part.trim())) return false;
             }
-            return false;
+            return true;
         }
 
         return lowerText.contains(lowerFilter);

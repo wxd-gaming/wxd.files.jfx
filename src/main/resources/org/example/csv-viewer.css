@@ -84,11 +84,55 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 5);
 }
 
+.hide-header .column-header-background {
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    visibility: hidden;
+}
+
 /* CSV Table */
 .csv-table {
     -fx-background-color: transparent;
     -fx-font-size: 13px;
     -fx-table-cell-border-color: transparent;
+}
+
+.fixed-table {
+    -fx-border-width: 0 0 0 0;
+    -fx-padding: 0;
+}
+
+.fixed-table .column-header-background {
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: #e2e8f0;
+}
+
+.fixed-table .table-row-cell {
+    -fx-background-color: #f8fafc; /* 微调背景色以区分固定行 */
+    -fx-border-color: rgba(226, 232, 240, 0.3);
+    -fx-border-width: 0 0 1 0;
+}
+
+.fixed-table .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-max-height: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+}
+
+.fixed-table .scroll-bar:vertical {
+    -fx-opacity: 0;
+    -fx-max-width: 0;
+    -fx-pref-width: 0;
+    -fx-min-width: 0;
+}
+
+.fixed-table.show-vertical-scrollbar .scroll-bar:vertical {
+    -fx-opacity: 1;
+    -fx-max-width: -1;
+    -fx-pref-width: -1;
+    -fx-min-width: -1;
 }
 
 .csv-table .table-row-cell:filled:selected {
@@ -103,6 +147,19 @@
 
 .csv-table-column {
     /*-fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6);*/
+}
+
+.csv-row-no-column {
+    -fx-alignment: CENTER;
+    -fx-background-color: #f1f5f9;
+}
+
+.csv-row-no-column .label {
+    -fx-text-fill: #64748b;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-padding: 10 5 10 5;
+    -fx-alignment: CENTER;
 }
 
 .csv-table-column .label {

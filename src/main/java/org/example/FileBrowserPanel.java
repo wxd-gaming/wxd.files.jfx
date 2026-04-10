@@ -596,10 +596,10 @@ final class FileBrowserPanel extends VBox {
 
     //打开excel阅读器
     private void openXlsViewer() {
-        CsvViewerPanel csvViewer = new CsvViewerPanel(panelBean.ofPath());
+        ExcelViewerPanel excelViewer = new ExcelViewerPanel(panelBean.ofPath());
         javafx.stage.Stage stage = new javafx.stage.Stage();
-        stage.setTitle("Xls 文件查看器 - " + panelBean.path);
-        stage.setScene(new javafx.scene.Scene(csvViewer, 1000, 700));
+        stage.setTitle("Excel 文件查看器 - " + panelBean.path);
+        stage.setScene(new javafx.scene.Scene(excelViewer, 1000, 700));
         stage.getIcons().add(new Image("/app.png"));
         stage.setMaximized(true);
         stage.show();
